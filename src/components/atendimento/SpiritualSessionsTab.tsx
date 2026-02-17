@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import type { SpiritualSession } from "@/hooks/useSpiritualSessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSpiritualSessions, useCreateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
+import SpiritualSessionDetail from "./SpiritualSessionDetail";
 
 interface ServiceEntry {
   service_type_id: string;
@@ -25,6 +27,8 @@ export default function SpiritualSessionsTab() {
   const [responsible, setResponsible] = useState("");
   const [observations, setObservations] = useState("");
   const [services, setServices] = useState<ServiceEntry[]>([]);
+  const [selectedSession, setSelectedSession] = useState<SpiritualSession | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const { data: sessions = [], isLoading } = useSpiritualSessions();
   const { data: serviceTypes = [] } = useServiceTypes(true, "coletivo");
@@ -198,7 +202,7 @@ export default function SpiritualSessionsTab() {
                 </TableRow>
               ) : (
                 sessions.map((s) => (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedSession(s); setDetailOpen(true); }}>
                     <TableCell className="font-medium text-foreground">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -233,6 +237,12 @@ export default function SpiritualSessionsTab() {
           </Table>
         </CardContent>
       </Card>
+
+      <SpiritualSessionDetail
+        session={selectedSession}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </div>
   );
 }
