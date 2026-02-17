@@ -408,6 +408,7 @@ export type Database = {
           last_login: string | null
           mobile_phone: string | null
           profile_completed: boolean
+          profile_photo_url: string | null
           role: string | null
           whatsapp: string | null
         }
@@ -428,6 +429,7 @@ export type Database = {
           last_login?: string | null
           mobile_phone?: string | null
           profile_completed?: boolean
+          profile_photo_url?: string | null
           role?: string | null
           whatsapp?: string | null
         }
@@ -448,6 +450,7 @@ export type Database = {
           last_login?: string | null
           mobile_phone?: string | null
           profile_completed?: boolean
+          profile_photo_url?: string | null
           role?: string | null
           whatsapp?: string | null
         }

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Loader2, Save, Camera, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,13 +42,14 @@ interface ProfileForm {
   address_city: string;
   address_country: string;
   profile_completed: boolean;
+  profile_photo_url: string;
 }
 
 const initialForm: ProfileForm = {
   full_name: "", email: "", role: "", cpf: "", mobile_phone: "", whatsapp: "",
   cep: "", address_street: "", address_number: "", address_complement: "",
   address_neighborhood: "", address_state: "", address_city: "", address_country: "Brasil",
-  profile_completed: false,
+  profile_completed: false, profile_photo_url: "",
 };
 
 export default function MeuPerfil() {
@@ -57,7 +59,9 @@ export default function MeuPerfil() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [form, setForm] = useState<ProfileForm>({ ...initialForm });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFirstLogin = !form.profile_completed;
   const fromRedirect = location.state?.firstLogin === true;
@@ -87,12 +91,57 @@ export default function MeuPerfil() {
           address_city: (data as any).address_city || "",
           address_country: (data as any).address_country || "Brasil",
           profile_completed: (data as any).profile_completed ?? false,
+          profile_photo_url: (data as any).profile_photo_url || "",
         });
       }
       setLoading(false);
     };
     fetchProfile();
   }, [user]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const filePath = `${user.id}/profile.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("user_photos")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("user_photos")
+        .getPublicUrl(filePath);
+
+      const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      await supabase
+        .from("profiles")
+        .update({ profile_photo_url: photoUrl } as any)
+        .eq("id", user.id);
+
+      setForm((prev) => ({ ...prev, profile_photo_url: photoUrl }));
+      toast.success("Foto atualizada com sucesso!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar foto");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const updateField = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -177,6 +226,47 @@ export default function MeuPerfil() {
           </Badge>
         )}
       </div>
+
+      {/* Foto do Perfil */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Foto do Perfil</CardTitle>
+          <CardDescription>Esta foto será utilizada para reconhecimento facial no registro de presença</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4">
+          <Avatar className="h-32 w-32 border-2 border-border">
+            {form.profile_photo_url ? (
+              <AvatarImage src={form.profile_photo_url} alt="Foto de perfil" />
+            ) : null}
+            <AvatarFallback className="text-3xl">
+              <User className="h-12 w-12" />
+            </AvatarFallback>
+          </Avatar>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+          >
+            {uploadingPhoto ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-2 h-4 w-4" />
+            )}
+            {form.profile_photo_url ? "Alterar Foto" : "Enviar Foto"}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Envie uma foto nítida do rosto, de frente, com boa iluminação. Máx. 5MB.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
