@@ -3,41 +3,97 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ScanFace, UserCheck, Clock, Calendar, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScanFace, UserCheck, Clock, Calendar, Search, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
-
-interface RegistroPresenca {
-  id: string;
-  nome: string;
-  horario: string;
-  data: string;
-  status: "Confirmado" | "Manual";
-}
-
-const mockPresenca: RegistroPresenca[] = [
-  { id: "1", nome: "Maria Silva", horario: "18:32", data: "2026-02-17", status: "Confirmado" },
-  { id: "2", nome: "João Santos", horario: "18:35", data: "2026-02-17", status: "Confirmado" },
-  { id: "3", nome: "Ana Oliveira", horario: "18:40", data: "2026-02-17", status: "Confirmado" },
-  { id: "4", nome: "Roberto Lima", horario: "18:42", data: "2026-02-17", status: "Manual" },
-  { id: "5", nome: "Teresa Costa", horario: "18:50", data: "2026-02-17", status: "Confirmado" },
-  { id: "6", nome: "Paulo Mendes", horario: "18:55", data: "2026-02-17", status: "Confirmado" },
-  { id: "7", nome: "Clara Souza", horario: "19:01", data: "2026-02-17", status: "Manual" },
-  { id: "8", nome: "Lucia Fernandes", horario: "19:05", data: "2026-02-17", status: "Confirmado" },
-];
+import { useAttendanceToday, useCreateAttendance } from "@/hooks/useAttendance";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Presenca() {
   const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ member_name: "", activity_type: "" });
   const hoje = new Date().toLocaleDateString("pt-BR");
 
-  const filtered = mockPresenca.filter((p) =>
-    p.nome.toLowerCase().includes(search.toLowerCase())
+  const { data: records = [], isLoading } = useAttendanceToday();
+  const createAttendance = useCreateAttendance();
+  const { toast } = useToast();
+
+  const filtered = records.filter((p) =>
+    (p.member_name || "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleSubmit = () => {
+    if (!form.member_name || !form.activity_type) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    createAttendance.mutate(
+      { member_name: form.member_name, activity_type: form.activity_type },
+      {
+        onSuccess: () => {
+          toast({ title: "Presença registrada!" });
+          setForm({ member_name: "", activity_type: "" });
+          setDialogOpen(false);
+        },
+        onError: () => toast({ title: "Erro ao registrar", variant: "destructive" }),
+      }
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">Registro de Presença</h1>
-        <p className="text-muted-foreground">Controle de presença dos colaboradores</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">Registro de Presença</h1>
+          <p className="text-muted-foreground">Controle de presença dos colaboradores</p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus className="mr-2 h-4 w-4" />Registrar Presença</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Registrar Presença Manual</DialogTitle>
+              <DialogDescription>Registre a presença de um colaborador manualmente</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Nome *</Label>
+                <Input placeholder="Nome do colaborador" value={form.member_name} onChange={(e) => setForm({ ...form, member_name: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Atividade *</Label>
+                <Select value={form.activity_type} onValueChange={(v) => setForm({ ...form, activity_type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sessão">Sessão</SelectItem>
+                    <SelectItem value="Estudo">Estudo</SelectItem>
+                    <SelectItem value="Curso">Curso</SelectItem>
+                    <SelectItem value="Voluntariado">Voluntariado</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSubmit} disabled={createAttendance.isPending}>
+                {createAttendance.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Registrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -45,7 +101,7 @@ export default function Presenca() {
           <CardContent className="flex items-center gap-4 p-4">
             <UserCheck className="h-8 w-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{mockPresenca.length}</p>
+              <p className="text-2xl font-bold text-foreground">{records.length}</p>
               <p className="text-xs text-muted-foreground">Presenças Hoje</p>
             </div>
           </CardContent>
@@ -54,8 +110,8 @@ export default function Presenca() {
           <CardContent className="flex items-center gap-4 p-4">
             <ScanFace className="h-8 w-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{mockPresenca.filter((p) => p.status === "Confirmado").length}</p>
-              <p className="text-xs text-muted-foreground">Via Reconhecimento</p>
+              <p className="text-2xl font-bold text-foreground">{records.filter((p) => p.activity_type === "Sessão").length}</p>
+              <p className="text-xs text-muted-foreground">Sessões</p>
             </div>
           </CardContent>
         </Card>
@@ -70,7 +126,6 @@ export default function Presenca() {
         </Card>
       </div>
 
-      {/* Simulated face recognition panel */}
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -103,25 +158,30 @@ export default function Presenca() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Horário</TableHead>
-                <TableHead>Método</TableHead>
+                <TableHead>Atividade</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium text-foreground">{p.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />{p.horario}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={p.status === "Confirmado" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}>
-                      {p.status === "Confirmado" ? "Facial" : "Manual"}
-                    </Badge>
-                  </TableCell>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhuma presença registrada hoje</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filtered.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium text-foreground">{p.member_name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(p.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{p.activity_type}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
