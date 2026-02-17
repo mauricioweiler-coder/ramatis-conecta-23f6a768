@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,50 +7,69 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Users, UserCheck, UserX } from "lucide-react";
-
-interface Colaborador {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  status: "Ativo" | "Inativo" | "Administrador";
-  dataIngresso: string;
-  mensalidade: "Em dia" | "Atrasado" | "Inadimplente";
-}
-
-const mockColaboradores: Colaborador[] = [
-  { id: "1", nome: "Maria Silva", email: "maria@email.com", telefone: "(11) 99999-0001", status: "Ativo", dataIngresso: "2023-01-15", mensalidade: "Em dia" },
-  { id: "2", nome: "João Santos", email: "joao@email.com", telefone: "(11) 99999-0002", status: "Ativo", dataIngresso: "2022-06-10", mensalidade: "Atrasado" },
-  { id: "3", nome: "Ana Oliveira", email: "ana@email.com", telefone: "(11) 99999-0003", status: "Administrador", dataIngresso: "2020-03-01", mensalidade: "Em dia" },
-  { id: "4", nome: "Carlos Pereira", email: "carlos@email.com", telefone: "(11) 99999-0004", status: "Inativo", dataIngresso: "2021-09-20", mensalidade: "Inadimplente" },
-  { id: "5", nome: "Lucia Fernandes", email: "lucia@email.com", telefone: "(11) 99999-0005", status: "Ativo", dataIngresso: "2024-02-14", mensalidade: "Em dia" },
-];
+import { Plus, Search, Users, UserCheck, UserX, Loader2 } from "lucide-react";
+import { useWorkersList, useCreateWorker } from "@/hooks/useWorkers";
+import { toast } from "sonner";
+import type { WorkerInsert } from "@/hooks/useWorkers";
 
 const statusColor: Record<string, string> = {
-  Ativo: "bg-primary/10 text-primary border-primary/20",
-  Inativo: "bg-muted text-muted-foreground border-border",
-  Administrador: "bg-secondary text-secondary-foreground border-secondary/50",
+  ATIVO: "bg-primary/10 text-primary border-primary/20",
+  INATIVO: "bg-muted text-muted-foreground border-border",
 };
 
-const mensalidadeColor: Record<string, string> = {
-  "Em dia": "bg-primary/10 text-primary border-primary/20",
-  Atrasado: "bg-destructive/10 text-destructive border-destructive/20",
-  Inadimplente: "bg-destructive/20 text-destructive border-destructive/30",
+const bondLabels: Record<string, string> = {
+  VOLUNTARIO: "Voluntário",
+  CONTRATADO: "Contratado",
 };
 
 export default function Colaboradores() {
+  const { data: workers, isLoading } = useWorkersList();
+  const createWorker = useCreateWorker();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<Partial<WorkerInsert>>({});
 
-  const filtered = mockColaboradores.filter((c) => {
-    const matchSearch = c.nome.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === "all" || c.status === filterStatus;
+  const filtered = (workers || []).filter((w) => {
+    const matchSearch =
+      w.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      (w.email || "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || w.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const totalAtivos = mockColaboradores.filter((c) => c.status === "Ativo").length;
-  const totalInativos = mockColaboradores.filter((c) => c.status === "Inativo").length;
+  const totalAtivos = (workers || []).filter((w) => w.status === "ATIVO").length;
+  const totalInativos = (workers || []).filter((w) => w.status === "INATIVO").length;
+
+  const handleCreate = async () => {
+    if (!form.full_name) {
+      toast.error("Informe o nome do colaborador");
+      return;
+    }
+    try {
+      await createWorker.mutateAsync({
+        full_name: form.full_name,
+        email: form.email,
+        mobile_phone: form.mobile_phone,
+        cpf: form.cpf,
+        bond_type: form.bond_type || "VOLUNTARIO",
+        status: form.status || "ATIVO",
+      });
+      toast.success("Colaborador cadastrado!");
+      setForm({});
+      setOpen(false);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao cadastrar");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -59,7 +78,7 @@ export default function Colaboradores() {
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">Colaboradores</h1>
           <p className="text-muted-foreground">Gerencie os colaboradores da casa</p>
         </div>
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />Novo Colaborador</Button>
           </DialogTrigger>
@@ -70,33 +89,74 @@ export default function Colaboradores() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="nome">Nome Completo</Label>
-                <Input id="nome" placeholder="Nome do colaborador" />
+                <Label>Nome Completo</Label>
+                <Input
+                  placeholder="Nome do colaborador"
+                  value={form.full_name || ""}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" placeholder="email@exemplo.com" />
+                  <Label>E-mail</Label>
+                  <Input
+                    type="email"
+                    placeholder="email@exemplo.com"
+                    value={form.email || ""}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <Input id="telefone" placeholder="(00) 00000-0000" />
+                  <Label>Celular</Label>
+                  <Input
+                    placeholder="(00) 00000-0000"
+                    value={form.mobile_phone || ""}
+                    onChange={(e) => setForm({ ...form, mobile_phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>CPF</Label>
+                  <Input
+                    placeholder="000.000.000-00"
+                    value={form.cpf || ""}
+                    onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Vínculo</Label>
+                  <Select
+                    value={form.bond_type || "VOLUNTARIO"}
+                    onValueChange={(v) => setForm({ ...form, bond_type: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VOLUNTARIO">Voluntário</SelectItem>
+                      <SelectItem value="CONTRATADO">Contratado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid gap-2">
                 <Label>Status</Label>
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <Select
+                  value={form.status || "ATIVO"}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Ativo">Ativo</SelectItem>
-                    <SelectItem value="Inativo">Inativo</SelectItem>
-                    <SelectItem value="Administrador">Administrador</SelectItem>
+                    <SelectItem value="ATIVO">Ativo</SelectItem>
+                    <SelectItem value="INATIVO">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit">Salvar</Button>
+              <Button onClick={handleCreate} disabled={createWorker.isPending}>
+                {createWorker.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -107,7 +167,7 @@ export default function Colaboradores() {
           <CardContent className="flex items-center gap-4 p-4">
             <Users className="h-8 w-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{mockColaboradores.length}</p>
+              <p className="text-2xl font-bold text-foreground">{(workers || []).length}</p>
               <p className="text-xs text-muted-foreground">Total</p>
             </div>
           </CardContent>
@@ -145,9 +205,8 @@ export default function Colaboradores() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="Ativo">Ativo</SelectItem>
-                <SelectItem value="Inativo">Inativo</SelectItem>
-                <SelectItem value="Administrador">Administrador</SelectItem>
+                <SelectItem value="ATIVO">Ativo</SelectItem>
+                <SelectItem value="INATIVO">Inativo</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -158,22 +217,22 @@ export default function Colaboradores() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden md:table-cell">E-mail</TableHead>
-                <TableHead className="hidden lg:table-cell">Telefone</TableHead>
+                <TableHead className="hidden lg:table-cell">Celular</TableHead>
+                <TableHead>Vínculo</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Mensalidade</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((c) => (
-                <TableRow key={c.id} className="cursor-pointer">
-                  <TableCell className="font-medium text-foreground">{c.nome}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{c.email}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">{c.telefone}</TableCell>
+              {filtered.map((w) => (
+                <TableRow key={w.id} className="cursor-pointer">
+                  <TableCell className="font-medium text-foreground">{w.full_name}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">{w.email || "—"}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-muted-foreground">{w.mobile_phone || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={statusColor[c.status]}>{c.status}</Badge>
+                    <Badge variant="outline">{bondLabels[w.bond_type || ""] || w.bond_type || "—"}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={mensalidadeColor[c.mensalidade]}>{c.mensalidade}</Badge>
+                    <Badge variant="outline" className={statusColor[w.status || ""] || ""}>{w.status || "—"}</Badge>
                   </TableCell>
                 </TableRow>
               ))}
