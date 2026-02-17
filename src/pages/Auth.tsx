@@ -66,7 +66,9 @@ export default function Auth() {
           </div>
           <CardTitle className="text-2xl">Ramatis Conecta</CardTitle>
           <CardDescription>
-            {isLogin ? "Faça login para acessar o sistema" : "Crie sua conta"}
+            {isLogin
+              ? "Faça login para acessar o sistema"
+              : "Crie sua conta como aluno"}
           </CardDescription>
         </CardHeader>
         <CardContent>

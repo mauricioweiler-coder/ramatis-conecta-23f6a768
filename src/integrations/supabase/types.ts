@@ -251,6 +251,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_date: string | null
+          graduation_role: string | null
           id: string
           main_teacher_id: string | null
           name: string
@@ -266,6 +267,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          graduation_role?: string | null
           id?: string
           main_teacher_id?: string | null
           name: string
@@ -281,6 +283,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          graduation_role?: string | null
           id?: string
           main_teacher_id?: string | null
           name?: string
@@ -548,7 +551,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "professor"
+        | "estagiario"
+        | "trabalhador"
+        | "aluno"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -676,7 +686,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "professor",
+        "estagiario",
+        "trabalhador",
+        "aluno",
+      ],
     },
   },
 } as const
