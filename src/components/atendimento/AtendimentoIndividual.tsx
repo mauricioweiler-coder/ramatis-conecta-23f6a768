@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2 } from "lucide-react";
 import { useAssistanceRecords, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
+import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -38,6 +39,7 @@ export default function AtendimentoIndividual() {
   const [form, setForm] = useState({ visitor_name: "", symptom: "", referral: "", observations: "" });
 
   const { data: records = [], isLoading } = useAssistanceRecords();
+  const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const createRecord = useCreateAssistanceRecord();
   const { toast } = useToast();
 
@@ -109,14 +111,13 @@ export default function AtendimentoIndividual() {
                 <Input placeholder="Nome completo" value={form.visitor_name} onChange={(e) => setForm({ ...form, visitor_name: e.target.value })} />
               </div>
               <div className="grid gap-2">
-                <Label>Tipo de Atendimento</Label>
+                <Label>Encaminhamento</Label>
                 <Select value={form.referral} onValueChange={(v) => setForm({ ...form, referral: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione o tipo de atendimento" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Conversa Fraterna">Conversa Fraterna</SelectItem>
-                    <SelectItem value="Passe">Passe</SelectItem>
-                    <SelectItem value="Desobsessão">Desobsessão</SelectItem>
-                    <SelectItem value="Orientação">Orientação Espiritual</SelectItem>
+                    {individualTypes.map((t) => (
+                      <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

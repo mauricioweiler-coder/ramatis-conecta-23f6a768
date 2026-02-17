@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useServiceTypes, useCreateServiceType, useToggleServiceType } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ export default function ServiceTypesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [mode, setMode] = useState<string>("coletivo");
 
   const { data: types = [], isLoading } = useServiceTypes();
   const create = useCreateServiceType();
@@ -26,12 +28,13 @@ export default function ServiceTypesTab() {
       return;
     }
     create.mutate(
-      { name: name.trim(), description: description.trim() || undefined },
+      { name: name.trim(), description: description.trim() || undefined, mode },
       {
         onSuccess: () => {
           toast({ title: "Tipo cadastrado!" });
           setName("");
           setDescription("");
+          setMode("coletivo");
           setDialogOpen(false);
         },
         onError: () => toast({ title: "Erro ao cadastrar", variant: "destructive" }),
@@ -71,6 +74,16 @@ export default function ServiceTypesTab() {
                 <Label>Descrição</Label>
                 <Input placeholder="Descrição opcional" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
+              <div className="grid gap-2">
+                <Label>Modalidade *</Label>
+                <Select value={mode} onValueChange={setMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="coletivo">Coletivo</SelectItem>
+                    <SelectItem value="individual">Individual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={handleSubmit} disabled={create.isPending}>
@@ -88,6 +101,7 @@ export default function ServiceTypesTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Modalidade</TableHead>
                 <TableHead className="hidden sm:table-cell">Descrição</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[80px]">Ação</TableHead>
@@ -96,7 +110,7 @@ export default function ServiceTypesTab() {
             <TableBody>
               {types.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Nenhum tipo cadastrado
                   </TableCell>
                 </TableRow>
@@ -104,6 +118,11 @@ export default function ServiceTypesTab() {
                 types.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium text-foreground">{t.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {t.mode === "individual" ? "Individual" : "Coletivo"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">{t.description || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={t.active ? "default" : "secondary"}>

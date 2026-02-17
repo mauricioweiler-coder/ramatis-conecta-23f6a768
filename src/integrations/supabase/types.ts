@@ -25,6 +25,7 @@ export type Database = {
           observations: string | null
           phone: string | null
           referral: string | null
+          referral_service_type_id: string | null
           status: string | null
           symptom: string
           updated_at: string
@@ -41,6 +42,7 @@ export type Database = {
           observations?: string | null
           phone?: string | null
           referral?: string | null
+          referral_service_type_id?: string | null
           status?: string | null
           symptom: string
           updated_at?: string
@@ -57,6 +59,7 @@ export type Database = {
           observations?: string | null
           phone?: string | null
           referral?: string | null
+          referral_service_type_id?: string | null
           status?: string | null
           symptom?: string
           updated_at?: string
@@ -69,6 +72,13 @@ export type Database = {
             columns: ["linked_previous_id"]
             isOneToOne: false
             referencedRelation: "assistance_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistance_records_referral_service_type_id_fkey"
+            columns: ["referral_service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
           {
@@ -462,6 +472,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          mode: string
           name: string
         }
         Insert: {
@@ -469,6 +480,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          mode?: string
           name: string
         }
         Update: {
@@ -476,6 +488,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          mode?: string
           name?: string
         }
         Relationships: []
