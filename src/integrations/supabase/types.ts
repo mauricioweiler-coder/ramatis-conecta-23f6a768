@@ -392,28 +392,64 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_country: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          cep: string | null
+          cpf: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
           last_login: string | null
+          mobile_phone: string | null
+          profile_completed: boolean
           role: string | null
+          whatsapp: string | null
         }
         Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          cep?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
           last_login?: string | null
+          mobile_phone?: string | null
+          profile_completed?: boolean
           role?: string | null
+          whatsapp?: string | null
         }
         Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          cep?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           last_login?: string | null
+          mobile_phone?: string | null
+          profile_completed?: boolean
           role?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
