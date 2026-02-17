@@ -80,3 +80,51 @@ export function useCreateSpiritualSession() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["spiritual-sessions"] }),
   });
 }
+
+export interface UpdateSessionInput {
+  id: string;
+  session_date?: string;
+  start_time?: string;
+  responsible_name?: string;
+  observations?: string;
+  services: { service_type_id: string; people_count: number }[];
+}
+
+export function useUpdateSpiritualSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateSessionInput) => {
+      const { id, services, ...updates } = input;
+      const { error } = await supabase
+        .from("spiritual_sessions")
+        .update({
+          ...updates,
+          start_time: updates.start_time || null,
+          responsible_name: updates.responsible_name || null,
+          observations: updates.observations || null,
+        })
+        .eq("id", id);
+      if (error) throw error;
+
+      // Replace services: delete old, insert new
+      const { error: delErr } = await supabase
+        .from("session_services")
+        .delete()
+        .eq("session_id", id);
+      if (delErr) throw delErr;
+
+      if (services.length > 0) {
+        const rows = services.map((s) => ({
+          session_id: id,
+          service_type_id: s.service_type_id,
+          people_count: s.people_count,
+        }));
+        const { error: insErr } = await supabase
+          .from("session_services")
+          .insert(rows);
+        if (insErr) throw insErr;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["spiritual-sessions"] }),
+  });
+}
