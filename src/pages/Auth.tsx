@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const { session, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -34,7 +34,14 @@ export default function Auth() {
     setSubmitting(true);
 
     try {
-      if (isLogin) {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+        setMode("login");
+      } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Login realizado com sucesso!");
@@ -66,14 +73,16 @@ export default function Auth() {
           </div>
           <CardTitle className="text-2xl">Ramatis Conecta</CardTitle>
           <CardDescription>
-            {isLogin
+            {mode === "login"
               ? "Faça login para acessar o sistema"
-              : "Crie sua conta como aluno"}
+              : mode === "register"
+              ? "Crie sua conta como aluno"
+              : "Informe seu e-mail para recuperar a senha"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {mode === "register" && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nome completo</Label>
                 <Input
@@ -81,7 +90,7 @@ export default function Auth() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Seu nome"
-                  required={!isLogin}
+                  required
                 />
               </div>
             )}
@@ -96,31 +105,54 @@ export default function Auth() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+            {mode === "login" && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot")}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLogin ? "Entrar" : "Cadastrar"}
+              {mode === "login" ? "Entrar" : mode === "register" ? "Cadastrar" : "Enviar e-mail de recuperação"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline"
-            >
-              {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
-            </button>
+            {mode === "forgot" ? (
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="text-primary hover:underline"
+              >
+                Voltar ao login
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                className="text-primary hover:underline"
+              >
+                {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
