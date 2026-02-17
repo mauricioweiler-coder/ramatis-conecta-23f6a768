@@ -456,6 +456,99 @@ export type Database = {
         }
         Relationships: []
       }
+      service_types: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      session_services: {
+        Row: {
+          created_at: string
+          id: string
+          people_count: number
+          service_type_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          people_count?: number
+          service_type_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          people_count?: number
+          service_type_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_services_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_services_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "spiritual_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spiritual_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          observations: string | null
+          responsible_name: string | null
+          session_date: string
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observations?: string | null
+          responsible_name?: string | null
+          session_date: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observations?: string | null
+          responsible_name?: string | null
+          session_date?: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
