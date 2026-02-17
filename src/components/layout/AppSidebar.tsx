@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const navItems = [
   { to: "/cursos", label: "Cursos", icon: GraduationCap },
   { to: "/atendimento", label: "Atendimento Espiritual", icon: Heart },
   { to: "/presenca", label: "Presença", icon: ScanFace },
+  { to: "/gestao-roles", label: "Gestão de Roles", icon: Shield },
 ];
 
 export function AppSidebar() {
