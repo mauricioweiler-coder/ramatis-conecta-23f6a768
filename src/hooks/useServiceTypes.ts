@@ -6,15 +6,17 @@ export interface ServiceType {
   name: string;
   description: string | null;
   active: boolean;
+  mode: string;
   created_at: string;
 }
 
-export function useServiceTypes(onlyActive = false) {
+export function useServiceTypes(onlyActive = false, mode?: "coletivo" | "individual") {
   return useQuery({
-    queryKey: ["service-types", onlyActive],
+    queryKey: ["service-types", onlyActive, mode],
     queryFn: async () => {
       let query = supabase.from("service_types").select("*").order("name");
       if (onlyActive) query = query.eq("active", true);
+      if (mode) query = query.eq("mode", mode);
       const { data, error } = await query;
       if (error) throw error;
       return data as ServiceType[];
@@ -25,10 +27,10 @@ export function useServiceTypes(onlyActive = false) {
 export function useCreateServiceType() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; description?: string }) => {
+    mutationFn: async (input: { name: string; description?: string; mode?: string }) => {
       const { data, error } = await supabase
         .from("service_types")
-        .insert({ name: input.name, description: input.description || null })
+        .insert({ name: input.name, description: input.description || null, mode: input.mode || "coletivo" })
         .select()
         .single();
       if (error) throw error;

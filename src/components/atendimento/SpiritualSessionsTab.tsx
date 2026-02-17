@@ -27,7 +27,7 @@ export default function SpiritualSessionsTab() {
   const [services, setServices] = useState<ServiceEntry[]>([]);
 
   const { data: sessions = [], isLoading } = useSpiritualSessions();
-  const { data: serviceTypes = [] } = useServiceTypes(true);
+  const { data: serviceTypes = [] } = useServiceTypes(true, "coletivo");
   const create = useCreateSpiritualSession();
   const { toast } = useToast();
 
