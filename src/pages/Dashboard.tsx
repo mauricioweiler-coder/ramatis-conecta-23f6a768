@@ -1,29 +1,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, DollarSign, GraduationCap, Heart, TrendingUp, TrendingDown, UserCheck, AlertCircle } from "lucide-react";
-
-const stats = [
-  { label: "Colaboradores Ativos", value: "127", icon: Users, change: "+3 este mês" },
-  { label: "Presença Hoje", value: "42", icon: UserCheck, change: "33% do total" },
-  { label: "Receitas (Mês)", value: "R$ 8.450", icon: TrendingUp, change: "+12% vs anterior" },
-  { label: "Despesas (Mês)", value: "R$ 5.230", icon: TrendingDown, change: "-8% vs anterior" },
-  { label: "Cursos Ativos", value: "6", icon: GraduationCap, change: "84 alunos" },
-  { label: "Atendimentos Pendentes", value: "14", icon: Heart, change: "5 novos hoje" },
-];
-
-const recentActivity = [
-  { text: "Maria Silva registrou presença", time: "Há 5 min" },
-  { text: "Pagamento de mensalidade — João Santos", time: "Há 15 min" },
-  { text: "Nova solicitação de atendimento espiritual", time: "Há 30 min" },
-  { text: "Curso Evangelho no Lar — Presença registrada", time: "Há 1h" },
-  { text: "Fechamento de caixa confirmado", time: "Há 2h" },
-];
-
-const alerts = [
-  { text: "12 mensalidades atrasadas", type: "warning" },
-  { text: "3 solicitações de atendimento aguardando há +5 dias", type: "warning" },
-];
+import { Users, GraduationCap, Heart, TrendingUp, TrendingDown, UserCheck, AlertCircle, Loader2 } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboard";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
+  const { data, isLoading } = useDashboardStats();
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const stats = [
+    { label: "Colaboradores Ativos", value: String(data.activeWorkers), icon: Users, change: `${data.totalWorkers} total` },
+    { label: "Presença Hoje", value: String(data.todayAttendance), icon: UserCheck, change: "registros hoje" },
+    { label: "Receitas (Mês)", value: `R$ ${data.receitas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingUp, change: "mês atual" },
+    { label: "Despesas (Mês)", value: `R$ ${data.despesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingDown, change: "mês atual" },
+    { label: "Cursos Ativos", value: String(data.activeCourses), icon: GraduationCap, change: `${data.totalStudents} alunos` },
+    { label: "Atendimentos Pendentes", value: String(data.pendingAssistance), icon: Heart, change: "aguardando" },
+  ];
+
+  const alerts: string[] = [];
+  if (data.pendingAssistance > 0) alerts.push(`${data.pendingAssistance} atendimento(s) aguardando`);
+  if (data.saldo < 0) alerts.push("Saldo financeiro negativo no mês");
+
   return (
     <div className="space-y-6">
       <div>
@@ -38,7 +42,7 @@ export default function Dashboard() {
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
                 {alerts.map((alert, i) => (
-                  <p key={i} className="text-sm text-foreground">{alert.text}</p>
+                  <p key={i} className="text-sm text-foreground">{alert}</p>
                 ))}
               </div>
             </div>
@@ -69,12 +73,18 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
-                  <p className="text-sm text-foreground">{item.text}</p>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap ml-4">{item.time}</span>
-                </div>
-              ))}
+              {data.recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+              ) : (
+                data.recentActivity.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                    <p className="text-sm text-foreground">{item.text}</p>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-4">
+                      {formatDistanceToNow(item.date, { addSuffix: true, locale: ptBR })}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -88,25 +98,18 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total de Receitas</span>
-                <span className="text-sm font-semibold text-foreground">R$ 8.450,00</span>
+                <span className="text-sm font-semibold text-foreground">R$ {data.receitas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total de Despesas</span>
-                <span className="text-sm font-semibold text-foreground">R$ 5.230,00</span>
+                <span className="text-sm font-semibold text-foreground">R$ {data.despesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="border-t border-border pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground">Saldo</span>
-                  <span className="text-lg font-bold text-primary">R$ 3.220,00</span>
-                </div>
-              </div>
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Mensalidades recebidas</span>
-                  <span>85/127</span>
-                </div>
-                <div className="h-2 rounded-full bg-accent">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: "67%" }} />
+                  <span className={`text-lg font-bold ${data.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
+                    R$ {data.saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             </div>
