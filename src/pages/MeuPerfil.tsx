@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Loader2, Save, Camera, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,8 +61,11 @@ export default function MeuPerfil() {
   const [saving, setSaving] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [form, setForm] = useState<ProfileForm>({ ...initialForm });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const isFirstLogin = !form.profile_completed;
   const fromRedirect = location.state?.firstLogin === true;
@@ -99,27 +103,56 @@ export default function MeuPerfil() {
     fetchProfile();
   }, [user]);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione um arquivo de imagem");
-      return;
+  const startCamera = useCallback(async () => {
+    setCameraOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      // wait for dialog to mount the video element
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch {
+      toast.error("Não foi possível acessar a câmera. Verifique as permissões do navegador.");
+      setCameraOpen(false);
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 5MB");
-      return;
-    }
+  }, []);
+
+  const capturePhoto = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || !user) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    stopCamera();
+    setCameraOpen(false);
 
     setUploadingPhoto(true);
     try {
-      const ext = file.name.split(".").pop();
-      const filePath = `${user.id}/profile.${ext}`;
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao capturar imagem"))), "image/jpeg", 0.9);
+      });
+
+      const filePath = `${user.id}/profile.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("user_photos")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, blob, { upsert: true, contentType: "image/jpeg" });
 
       if (uploadError) throw uploadError;
 
@@ -141,7 +174,7 @@ export default function MeuPerfil() {
     } finally {
       setUploadingPhoto(false);
     }
-  };
+  }, [user, stopCamera]);
 
   const updateField = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -242,34 +275,52 @@ export default function MeuPerfil() {
               <User className="h-12 w-12" />
             </AvatarFallback>
           </Avatar>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            className="hidden"
-            onChange={handlePhotoUpload}
-          />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingPhoto}
-            >
-              {uploadingPhoto ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="mr-2 h-4 w-4" />
-              )}
-              {form.profile_photo_url ? "Tirar Nova Foto" : "Tirar Foto"}
-            </Button>
-          </div>
+          <canvas ref={canvasRef} className="hidden" />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={startCamera}
+            disabled={uploadingPhoto}
+          >
+            {uploadingPhoto ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-2 h-4 w-4" />
+            )}
+            {form.profile_photo_url ? "Tirar Nova Foto" : "Tirar Foto"}
+          </Button>
           <p className="text-xs text-muted-foreground text-center">
-            Tire uma foto nítida do rosto, de frente, com boa iluminação. Máx. 5MB.
+            Tire uma foto nítida do rosto, de frente, com boa iluminação.
           </p>
         </CardContent>
       </Card>
+
+      {/* Dialog da Câmera */}
+      <Dialog open={cameraOpen} onOpenChange={(open) => { if (!open) { stopCamera(); setCameraOpen(false); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Capturar Foto</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full max-h-[400px] rounded-lg bg-muted object-cover"
+            />
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-center">
+            <Button variant="outline" onClick={() => { stopCamera(); setCameraOpen(false); }}>
+              Cancelar
+            </Button>
+            <Button onClick={capturePhoto}>
+              <Camera className="mr-2 h-4 w-4" />
+              Capturar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
