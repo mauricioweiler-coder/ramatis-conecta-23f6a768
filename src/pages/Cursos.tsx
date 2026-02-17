@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2 } from "lucide-react";
 import { useCourses, useCourseStudentCounts, useWorkers, useCreateCourse } from "@/hooks/useCourses";
 import { toast } from "sonner";
-import type { CourseInsert } from "@/hooks/useCourses";
+import type { CourseInsert, Course } from "@/hooks/useCourses";
+import { CourseStudentsDialog } from "@/components/CourseStudentsDialog";
 
 const statusVariant: Record<string, string> = {
   Ativo: "bg-primary/10 text-primary border-primary/20",
@@ -37,6 +38,7 @@ export default function Cursos() {
   const { data: workers } = useWorkers();
   const createCourse = useCreateCourse();
   const [open, setOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<(Course & { status?: string; alunos?: number }) | null>(null);
 
   const [form, setForm] = useState<Partial<CourseInsert>>({});
 
@@ -267,7 +269,7 @@ export default function Cursos() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {coursesWithStatus.map((curso) => (
-            <Card key={curso.id} className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card key={curso.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCourse(curso)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{curso.name}</CardTitle>
@@ -296,6 +298,14 @@ export default function Cursos() {
             </Card>
           ))}
         </div>
+      )}
+
+      {selectedCourse && (
+        <CourseStudentsDialog
+          course={selectedCourse}
+          open={!!selectedCourse}
+          onOpenChange={(open) => !open && setSelectedCourse(null)}
+        />
       )}
     </div>
   );
