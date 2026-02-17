@@ -4,9 +4,11 @@ import { HeartHandshake, CalendarDays, Settings2 } from "lucide-react";
 import AtendimentoIndividual from "@/components/atendimento/AtendimentoIndividual";
 import SpiritualSessionsTab from "@/components/atendimento/SpiritualSessionsTab";
 import ServiceTypesTab from "@/components/atendimento/ServiceTypesTab";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 export default function Atendimento() {
   const [tab, setTab] = useState("sessoes");
+  const { isAdminOrDiretor } = useCurrentUserRole();
 
   return (
     <div className="space-y-6">
@@ -25,10 +27,12 @@ export default function Atendimento() {
             <HeartHandshake className="h-4 w-4" />
             <span className="hidden sm:inline">Individual</span>
           </TabsTrigger>
-          <TabsTrigger value="tipos" className="gap-2">
-            <Settings2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Tipos</span>
-          </TabsTrigger>
+          {isAdminOrDiretor && (
+            <TabsTrigger value="tipos" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Tipos</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="sessoes" className="mt-6">
@@ -37,9 +41,11 @@ export default function Atendimento() {
         <TabsContent value="individual" className="mt-6">
           <AtendimentoIndividual />
         </TabsContent>
-        <TabsContent value="tipos" className="mt-6">
-          <ServiceTypesTab />
-        </TabsContent>
+        {isAdminOrDiretor && (
+          <TabsContent value="tipos" className="mt-6">
+            <ServiceTypesTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
