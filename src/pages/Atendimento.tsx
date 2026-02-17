@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,26 +8,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Heart, Clock, CheckCircle, Search, AlertCircle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2 } from "lucide-react";
+import { useAssistanceRecords, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
+import { useToast } from "@/hooks/use-toast";
 
-interface Solicitacao {
-  id: string;
-  nome: string;
-  tipo: string;
-  status: "Pendente" | "Em andamento" | "Concluído";
-  dataSolicitacao: string;
-  responsavel: string;
-  resumo: string;
-}
-
-const mockSolicitacoes: Solicitacao[] = [
-  { id: "1", nome: "José Pereira", tipo: "Conversa Fraterna", status: "Pendente", dataSolicitacao: "2026-02-17", responsavel: "—", resumo: "Busca apoio emocional após perda familiar" },
-  { id: "2", nome: "Cláudia Mendes", tipo: "Passe", status: "Em andamento", dataSolicitacao: "2026-02-15", responsavel: "Teresa Costa", resumo: "Dores de cabeça frequentes e insônia" },
-  { id: "3", nome: "Ricardo Alves", tipo: "Desobsessão", status: "Em andamento", dataSolicitacao: "2026-02-14", responsavel: "Paulo Mendes", resumo: "Relata perturbações espirituais em casa" },
-  { id: "4", nome: "Marina Costa", tipo: "Conversa Fraterna", status: "Concluído", dataSolicitacao: "2026-02-10", responsavel: "Clara Souza", resumo: "Orientação sobre estudo espírita" },
-  { id: "5", nome: "André Lima", tipo: "Passe", status: "Pendente", dataSolicitacao: "2026-02-16", responsavel: "—", resumo: "Ansiedade e dificuldades no trabalho" },
-];
+const statusMap: Record<string, string> = {
+  AGUARDANDO: "Pendente",
+  EM_ANDAMENTO: "Em andamento",
+  CONCLUIDO: "Concluído",
+};
 
 const statusColor: Record<string, string> = {
   Pendente: "bg-destructive/10 text-destructive border-destructive/20",
@@ -44,16 +34,58 @@ const statusIcon: Record<string, typeof Clock> = {
 export default function Atendimento() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ visitor_name: "", symptom: "", referral: "", observations: "" });
 
-  const filtered = mockSolicitacoes.filter((s) => {
-    const matchSearch = s.nome.toLowerCase().includes(search.toLowerCase());
-    const matchTab = tab === "all" || s.status === tab;
+  const { data: records = [], isLoading } = useAssistanceRecords();
+  const createRecord = useCreateAssistanceRecord();
+  const { toast } = useToast();
+
+  const mapped = records.map((r) => ({
+    ...r,
+    displayStatus: statusMap[r.status || "AGUARDANDO"] || "Pendente",
+  }));
+
+  const filtered = mapped.filter((s) => {
+    const matchSearch = s.visitor_name.toLowerCase().includes(search.toLowerCase());
+    const matchTab = tab === "all" || s.displayStatus === tab;
     return matchSearch && matchTab;
   });
 
-  const pendentes = mockSolicitacoes.filter((s) => s.status === "Pendente").length;
-  const emAndamento = mockSolicitacoes.filter((s) => s.status === "Em andamento").length;
-  const concluidos = mockSolicitacoes.filter((s) => s.status === "Concluído").length;
+  const pendentes = mapped.filter((s) => s.displayStatus === "Pendente").length;
+  const emAndamento = mapped.filter((s) => s.displayStatus === "Em andamento").length;
+  const concluidos = mapped.filter((s) => s.displayStatus === "Concluído").length;
+
+  const handleSubmit = () => {
+    if (!form.visitor_name || !form.symptom) {
+      toast({ title: "Preencha nome e motivo", variant: "destructive" });
+      return;
+    }
+    createRecord.mutate(
+      {
+        visitor_name: form.visitor_name,
+        symptom: form.symptom,
+        referral: form.referral || null,
+        observations: form.observations || null,
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Solicitação registrada!" });
+          setForm({ visitor_name: "", symptom: "", referral: "", observations: "" });
+          setDialogOpen(false);
+        },
+        onError: () => toast({ title: "Erro ao registrar", variant: "destructive" }),
+      }
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -62,7 +94,7 @@ export default function Atendimento() {
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">Atendimento Espiritual</h1>
           <p className="text-muted-foreground">Solicitações e acompanhamento</p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />Nova Solicitação</Button>
           </DialogTrigger>
@@ -73,12 +105,12 @@ export default function Atendimento() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Nome do Solicitante</Label>
-                <Input placeholder="Nome completo" />
+                <Label>Nome do Solicitante *</Label>
+                <Input placeholder="Nome completo" value={form.visitor_name} onChange={(e) => setForm({ ...form, visitor_name: e.target.value })} />
               </div>
               <div className="grid gap-2">
                 <Label>Tipo de Atendimento</Label>
-                <Select>
+                <Select value={form.referral} onValueChange={(v) => setForm({ ...form, referral: v })}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Conversa Fraterna">Conversa Fraterna</SelectItem>
@@ -89,12 +121,19 @@ export default function Atendimento() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Descrição / Motivo</Label>
-                <Textarea placeholder="Descreva brevemente o motivo da solicitação..." />
+                <Label>Descrição / Motivo *</Label>
+                <Textarea placeholder="Descreva brevemente o motivo da solicitação..." value={form.symptom} onChange={(e) => setForm({ ...form, symptom: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Observações</Label>
+                <Textarea placeholder="Observações adicionais..." value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit">Registrar</Button>
+              <Button onClick={handleSubmit} disabled={createRecord.isPending}>
+                {createRecord.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Registrar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -154,36 +193,37 @@ export default function Atendimento() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="hidden md:table-cell">Data</TableHead>
-                <TableHead className="hidden lg:table-cell">Responsável</TableHead>
+                <TableHead className="hidden lg:table-cell">Entrevistador</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => {
-                const Icon = statusIcon[s.status];
-                return (
-                  <TableRow key={s.id} className="cursor-pointer">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-foreground">{s.nome}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{s.resumo}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell><Badge variant="outline">{s.tipo}</Badge></TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(s.dataSolicitacao).toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">{s.responsavel}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={statusColor[s.status]}>
-                        <Icon className="mr-1 h-3 w-3" />{s.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {filtered.length === 0 && (
+              {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</TableCell>
                 </TableRow>
+              ) : (
+                filtered.map((s) => {
+                  const Icon = statusIcon[s.displayStatus];
+                  return (
+                    <TableRow key={s.id} className="cursor-pointer">
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-foreground">{s.visitor_name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{s.symptom}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge variant="outline">{s.referral || "—"}</Badge></TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(s.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">{s.interviewer_name || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColor[s.displayStatus]}>
+                          <Icon className="mr-1 h-3 w-3" />{s.displayStatus}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
