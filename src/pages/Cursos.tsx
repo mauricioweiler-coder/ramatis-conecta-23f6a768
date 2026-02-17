@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, GraduationCap, Users, Calendar, BookOpen } from "lucide-react";
 
 interface Curso {
@@ -70,9 +71,24 @@ export default function Cursos() {
                   <Input placeholder="Nome" />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Frequência</Label>
-                <Input placeholder="Ex: Semanal, Quinzenal" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Frequência</Label>
+                  <Input placeholder="Ex: Semanal, Quinzenal" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Graduação ao Concluir</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo ao concluir" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="professor">Professor</SelectItem>
+                      <SelectItem value="estagiario">Estagiário</SelectItem>
+                      <SelectItem value="trabalhador">Trabalhador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <DialogFooter>
