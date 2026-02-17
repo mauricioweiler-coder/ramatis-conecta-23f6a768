@@ -246,24 +246,27 @@ export default function MeuPerfil() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            capture="user"
             className="hidden"
             onChange={handlePhotoUpload}
           />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingPhoto}
-          >
-            {uploadingPhoto ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Camera className="mr-2 h-4 w-4" />
-            )}
-            {form.profile_photo_url ? "Alterar Foto" : "Enviar Foto"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              {form.profile_photo_url ? "Tirar Nova Foto" : "Tirar Foto"}
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground text-center">
-            Envie uma foto nítida do rosto, de frente, com boa iluminação. Máx. 5MB.
+            Tire uma foto nítida do rosto, de frente, com boa iluminação. Máx. 5MB.
           </p>
         </CardContent>
       </Card>
