@@ -12,6 +12,7 @@ import Financeiro from "./pages/Financeiro";
 import Cursos from "./pages/Cursos";
 import Atendimento from "./pages/Atendimento";
 import Presenca from "./pages/Presenca";
+import GestaoRoles from "./pages/GestaoRoles";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/cursos" element={<Cursos />} />
               <Route path="/atendimento" element={<Atendimento />} />
               <Route path="/presenca" element={<Presenca />} />
+              <Route path="/gestao-roles" element={<GestaoRoles />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
