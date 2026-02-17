@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -34,7 +35,9 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { canAccess } = useCurrentUserRole();
 
+  const filteredNavItems = navItems.filter((item) => canAccess(item.to));
   const sidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border px-6 py-5">
@@ -53,7 +56,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const isActive = location.pathname === item.to;
           return (
             <NavLink

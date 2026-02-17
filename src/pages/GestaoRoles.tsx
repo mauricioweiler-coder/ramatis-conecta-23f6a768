@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const ROLES = [
   { value: "admin", label: "Admin" },
+  { value: "diretor", label: "Diretor" },
   { value: "professor", label: "Professor" },
   { value: "estagiario", label: "Estagiário" },
   { value: "trabalhador", label: "Trabalhador" },
@@ -18,6 +19,7 @@ const ROLES = [
 
 const roleBadgeColor: Record<string, string> = {
   admin: "bg-destructive/10 text-destructive border-destructive/20",
+  diretor: "bg-primary/10 text-primary border-primary/20",
   professor: "bg-primary/10 text-primary border-primary/20",
   estagiario: "bg-primary/10 text-primary border-primary/20",
   trabalhador: "bg-muted text-muted-foreground border-border",
