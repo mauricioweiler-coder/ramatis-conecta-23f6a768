@@ -481,8 +481,16 @@ export type Database = {
       }
       workers: {
         Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_country: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
           birth_date: string | null
           bond_type: string | null
+          cep: string | null
           cpf: string | null
           created_at: string
           dependents_count: number | null
@@ -497,10 +505,19 @@ export type Database = {
           rg: string | null
           status: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           birth_date?: string | null
           bond_type?: string | null
+          cep?: string | null
           cpf?: string | null
           created_at?: string
           dependents_count?: number | null
@@ -515,10 +532,19 @@ export type Database = {
           rg?: string | null
           status?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           birth_date?: string | null
           bond_type?: string | null
+          cep?: string | null
           cpf?: string | null
           created_at?: string
           dependents_count?: number | null
@@ -533,6 +559,7 @@ export type Database = {
           rg?: string | null
           status?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
