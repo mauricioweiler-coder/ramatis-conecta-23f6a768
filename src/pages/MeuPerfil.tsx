@@ -269,7 +269,7 @@ export default function MeuPerfil() {
         <CardContent className="flex flex-col items-center gap-4">
           <Avatar className="h-32 w-32 border-2 border-border">
             {form.profile_photo_url ? (
-              <AvatarImage src={form.profile_photo_url} alt="Foto de perfil" />
+              <AvatarImage src={form.profile_photo_url} alt="Foto de perfil" className="object-cover" />
             ) : null}
             <AvatarFallback className="text-3xl">
               <User className="h-12 w-12" />
