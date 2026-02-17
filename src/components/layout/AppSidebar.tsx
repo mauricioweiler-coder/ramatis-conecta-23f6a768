@@ -8,11 +8,13 @@ import {
   ScanFace,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +29,7 @@ export function AppSidebar() {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
+  const { signOut, user } = useAuth();
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
@@ -67,8 +70,13 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border px-6 py-4">
-        <p className="text-xs text-muted-foreground">v1.0 — Ramatis Conecta</p>
+      <div className="border-t border-border px-4 py-4 space-y-3">
+        <p className="text-xs text-muted-foreground truncate px-2">{user?.email}</p>
+        <Button variant="ghost" className="w-full justify-start gap-3 text-sm" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
+          Sair
+        </Button>
+        <p className="text-xs text-muted-foreground px-2">v1.0 — Ramatis Conecta</p>
       </div>
     </div>
   );
