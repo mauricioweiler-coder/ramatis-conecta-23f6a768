@@ -10,9 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2 } from "lucide-react";
-import { useAssistanceRecords, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
+import { useAssistanceRecords, useCreateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
+import AssistanceRecordDetail from "./AssistanceRecordDetail";
 
 const statusMap: Record<string, string> = {
   AGUARDANDO: "Pendente",
@@ -36,6 +37,8 @@ export default function AtendimentoIndividual() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<AssistanceRecord | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState({ visitor_name: "", symptom: "", referral: "", observations: "" });
 
   const { data: records = [], isLoading } = useAssistanceRecords();
@@ -193,7 +196,7 @@ export default function AtendimentoIndividual() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="hidden md:table-cell">Data</TableHead>
+                <TableHead>Data / Hora</TableHead>
                 <TableHead className="hidden lg:table-cell">Entrevistador</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -207,7 +210,7 @@ export default function AtendimentoIndividual() {
                 filtered.map((s) => {
                   const Icon = statusIcon[s.displayStatus];
                   return (
-                    <TableRow key={s.id} className="cursor-pointer">
+                    <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(s); setDetailOpen(true); }}>
                       <TableCell>
                         <div>
                           <p className="font-medium text-foreground">{s.visitor_name}</p>
@@ -215,7 +218,12 @@ export default function AtendimentoIndividual() {
                         </div>
                       </TableCell>
                       <TableCell><Badge variant="outline">{s.referral || "—"}</Badge></TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(s.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {new Date(s.created_at).toLocaleDateString("pt-BR")} {new Date(s.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">{s.interviewer_name || "—"}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={statusColor[s.displayStatus]}>
@@ -230,6 +238,12 @@ export default function AtendimentoIndividual() {
           </Table>
         </CardContent>
       </Card>
+
+      <AssistanceRecordDetail
+        record={selectedRecord}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </div>
   );
 }
