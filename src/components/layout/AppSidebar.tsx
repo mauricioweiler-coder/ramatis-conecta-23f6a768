@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -10,6 +10,7 @@ import {
   X,
   LogOut,
   Shield,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function AppSidebar() {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
 
   const sidebarContent = (
@@ -72,8 +74,19 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border px-4 py-4 space-y-3">
+      <div className="border-t border-border px-4 py-4 space-y-2">
         <p className="text-xs text-muted-foreground truncate px-2">{user?.email}</p>
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-3 text-sm"
+          onClick={() => {
+            navigate("/meu-perfil");
+            if (isMobile) setOpen(false);
+          }}
+        >
+          <UserCog className="h-4 w-4" />
+          Meu Perfil
+        </Button>
         <Button variant="ghost" className="w-full justify-start gap-3 text-sm" onClick={signOut}>
           <LogOut className="h-4 w-4" />
           Sair
