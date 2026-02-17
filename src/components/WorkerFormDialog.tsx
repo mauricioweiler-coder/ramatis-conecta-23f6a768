@@ -44,6 +44,21 @@ const initialForm: WorkerFormState = {
   status: "ATIVO",
 };
 
+const maskCpf = (v: string) =>
+  v.replace(/\D/g, "").slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+const maskPhone = (v: string) =>
+  v.replace(/\D/g, "").slice(0, 11)
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
+
+const maskCep = (v: string) =>
+  v.replace(/\D/g, "").slice(0, 8)
+    .replace(/(\d{5})(\d{1,3})$/, "$1-$2");
+
 export default function WorkerFormDialog() {
   const createWorker = useCreateWorker();
   const [open, setOpen] = useState(false);
@@ -52,6 +67,10 @@ export default function WorkerFormDialog() {
 
   const updateField = (field: keyof WorkerFormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateMaskedField = (field: keyof WorkerFormState, value: string, mask: (v: string) => string) => {
+    setForm((prev) => ({ ...prev, [field]: mask(value) }));
   };
 
   const handleCepBlur = async () => {
@@ -137,7 +156,7 @@ export default function WorkerFormDialog() {
             </div>
             <div className="grid gap-2">
               <Label>CPF</Label>
-              <Input placeholder="000.000.000-00" value={form.cpf} onChange={(e) => updateField("cpf", e.target.value)} />
+              <Input placeholder="000.000.000-00" value={form.cpf} onChange={(e) => updateMaskedField("cpf", e.target.value, maskCpf)} />
             </div>
           </div>
 
@@ -145,11 +164,11 @@ export default function WorkerFormDialog() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Telefone</Label>
-              <Input placeholder="(00) 00000-0000" value={form.mobile_phone} onChange={(e) => updateField("mobile_phone", e.target.value)} />
+              <Input placeholder="(00) 00000-0000" value={form.mobile_phone} onChange={(e) => updateMaskedField("mobile_phone", e.target.value, maskPhone)} />
             </div>
             <div className="grid gap-2">
               <Label>WhatsApp</Label>
-              <Input placeholder="(00) 00000-0000" value={form.whatsapp} onChange={(e) => updateField("whatsapp", e.target.value)} />
+              <Input placeholder="(00) 00000-0000" value={form.whatsapp} onChange={(e) => updateMaskedField("whatsapp", e.target.value, maskPhone)} />
             </div>
           </div>
 
@@ -158,7 +177,7 @@ export default function WorkerFormDialog() {
             <div className="grid gap-2">
               <Label>CEP</Label>
               <div className="relative">
-                <Input placeholder="00000-000" value={form.cep} onChange={(e) => updateField("cep", e.target.value)} onBlur={handleCepBlur} />
+                <Input placeholder="00000-000" value={form.cep} onChange={(e) => updateMaskedField("cep", e.target.value, maskCep)} onBlur={handleCepBlur} />
                 {loadingCep && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             </div>
