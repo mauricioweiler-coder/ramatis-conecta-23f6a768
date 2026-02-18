@@ -16,8 +16,7 @@ import type { AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useSearchAtendidoByCpf, useCreateAtendido, useUpdateAtendido, useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useWorkersList } from "@/hooks/useWorkers";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -72,19 +71,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const { data: foundAtendido, isFetching: searchingCpf } = useSearchAtendidoByCpf(cpfSearched ? cpf : "");
   const { data: history = [] } = useAtendidoHistory(atendidoId);
-  const { data: colaboradores = [] } = useQuery({
-    queryKey: ["colaboradores-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, role")
-        .neq("role", "ALUNO")
-        .not("full_name", "is", null)
-        .order("full_name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: workers = [] } = useWorkersList();
   const { toast } = useToast();
 
   // Get current record's referral service type level
@@ -384,9 +371,9 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
                   <SelectValue placeholder="Selecione o trabalhador" />
                 </SelectTrigger>
               <SelectContent>
-                  {colaboradores.map((c) => (
-                    <SelectItem key={c.id} value={c.full_name!}>
-                      {c.full_name}
+                  {workers.map((w) => (
+                    <SelectItem key={w.id} value={w.full_name}>
+                      {w.full_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

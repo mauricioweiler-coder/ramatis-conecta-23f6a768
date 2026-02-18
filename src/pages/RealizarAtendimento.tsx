@@ -16,8 +16,7 @@ import {
 import { useAssistanceRecords, useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useWorkersList } from "@/hooks/useWorkers";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,19 +37,7 @@ export default function RealizarAtendimento() {
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
-  const { data: colaboradores = [] } = useQuery({
-    queryKey: ["colaboradores-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, role")
-        .neq("role", "ALUNO")
-        .not("full_name", "is", null)
-        .order("full_name");
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: workers = [] } = useWorkersList();
 
   const record = records.find((r) => r.id === id);
   
@@ -291,9 +278,9 @@ export default function RealizarAtendimento() {
                     <SelectValue placeholder="Selecione o trabalhador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {colaboradores.map((c) => (
-                      <SelectItem key={c.id} value={c.full_name!}>
-                        {c.full_name}
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.full_name}>
+                        {w.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
