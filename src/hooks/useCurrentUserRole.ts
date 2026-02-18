@@ -34,6 +34,9 @@ export function useCurrentUserRole() {
   const isDiretor = role === "diretor";
   const isAdminOrDiretor = isAdmin || isDiretor;
 
+  // Aluno only has access to cursos (view only)
+  const isAluno = role === "aluno";
+
   const canAccess = (route: string): boolean => {
     // Always accessible routes
     if (ALWAYS_ACCESSIBLE.includes(route)) return true;
@@ -41,6 +44,11 @@ export function useCurrentUserRole() {
     if (ADMIN_ONLY_ROUTES.includes(route)) return isAdminOrDiretor;
     // Admin/Diretor always have full access
     if (isAdminOrDiretor) return true;
+    // Aluno: only cursos module
+    if (isAluno) {
+      const module = routeToModule(route);
+      return module === "cursos";
+    }
     // Check permissions for the module
     const module = routeToModule(route);
     if (!module) return true;
@@ -50,6 +58,8 @@ export function useCurrentUserRole() {
 
   const canEdit = (route: string): boolean => {
     if (isAdminOrDiretor) return true;
+    // Aluno never edits
+    if (isAluno) return false;
     const module = routeToModule(route);
     if (!module) return false;
     const perm = permissions.find((p) => p.module === module);
