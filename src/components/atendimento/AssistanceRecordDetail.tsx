@@ -16,7 +16,8 @@ import type { AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useSearchAtendidoByCpf, useCreateAtendido, useUpdateAtendido, useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
-import { useWorkersList } from "@/hooks/useWorkers";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -71,7 +72,19 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const { data: foundAtendido, isFetching: searchingCpf } = useSearchAtendidoByCpf(cpfSearched ? cpf : "");
   const { data: history = [] } = useAtendidoHistory(atendidoId);
-  const { data: workers = [] } = useWorkersList();
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ["colaboradores-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, role")
+        .neq("role", "ALUNO")
+        .not("full_name", "is", null)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
   const { toast } = useToast();
 
   // Get current record's referral service type level
@@ -370,27 +383,10 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o trabalhador" />
                 </SelectTrigger>
-                <SelectContent>
-                  {workers.map((w) => (
-                    <SelectItem key={w.id} value={w.full_name}>
-                      {w.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label className="flex items-center gap-1">
-                <ArrowRight className="h-3.5 w-3.5" />
-                Encaminhamento
-              </Label>
-              <Select value={referral} onValueChange={setReferral}>
-                <SelectTrigger><SelectValue placeholder="Selecione o encaminhamento" /></SelectTrigger>
-                <SelectContent>
-                  {individualTypes.map((t) => (
-                    <SelectItem key={t.id} value={t.name}>
-                      {t.name} <span className="text-muted-foreground ml-1">(Nível {t.level})</span>
+              <SelectContent>
+                  {colaboradores.map((c) => (
+                    <SelectItem key={c.id} value={c.full_name!}>
+                      {c.full_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
