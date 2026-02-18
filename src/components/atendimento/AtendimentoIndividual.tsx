@@ -43,6 +43,7 @@ export default function AtendimentoIndividual() {
   const { user } = useAuth();
   const currentUserName = user?.user_metadata?.full_name || "";
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [tab, setTab] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<AssistanceRecord | null>(null);
@@ -56,27 +57,28 @@ export default function AtendimentoIndividual() {
   const createRecord = useCreateAssistanceRecord();
   const { toast } = useToast();
 
-  const mapped = records
-    .filter((r) => {
-      // Atendimentos concluídos só visíveis para o entrevistador
-      if (r.status === "CONCLUIDO" && r.interviewer_name !== currentUserName) return false;
-      return true;
-    })
-    .map((r) => ({
-      ...r,
-      displayStatus: statusMap[r.status || "AGENDADO"] || "Agendado",
-    }));
+  const allMapped = records.map((r) => ({
+    ...r,
+    displayStatus: statusMap[r.status || "AGENDADO"] || "Agendado",
+  }));
 
-  const filtered = mapped.filter((s) => {
+  // Contadores: sempre do dia atual, sem restrição por usuário
+  const today = new Date().toLocaleDateString("pt-BR");
+  const todayRecords = allMapped.filter((s) => new Date(s.created_at).toLocaleDateString("pt-BR") === today);
+  const agendados = todayRecords.filter((s) => s.displayStatus === "Agendado").length;
+  const presentes = todayRecords.filter((s) => s.displayStatus === "Presente").length;
+  const emAndamento = todayRecords.filter((s) => s.displayStatus === "Em andamento").length;
+  const concluidos = todayRecords.filter((s) => s.displayStatus === "Concluído").length;
+
+  // Lista: aplica restrição de visibilidade para concluídos + filtros de busca
+  const filtered = allMapped.filter((s) => {
+    // Concluídos só visíveis para o entrevistador
+    if (s.status === "CONCLUIDO" && s.interviewer_name !== currentUserName) return false;
     const matchSearch = s.visitor_name.toLowerCase().includes(search.toLowerCase());
     const matchTab = tab === "all" || s.displayStatus === tab;
-    return matchSearch && matchTab;
+    const matchDate = !dateFilter || new Date(s.created_at).toISOString().slice(0, 10) === dateFilter;
+    return matchSearch && matchTab && matchDate;
   });
-
-  const agendados = mapped.filter((s) => s.displayStatus === "Agendado").length;
-  const presentes = mapped.filter((s) => s.displayStatus === "Presente").length;
-  const emAndamento = mapped.filter((s) => s.displayStatus === "Em andamento").length;
-  const concluidos = mapped.filter((s) => s.displayStatus === "Concluído").length;
 
   const handleSubmit = () => {
     if (!form.visitor_name || !form.symptom) {
@@ -178,7 +180,7 @@ export default function AtendimentoIndividual() {
             <CalendarCheck className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-2xl font-bold text-foreground">{agendados}</p>
-              <p className="text-xs text-muted-foreground">Agendados</p>
+              <p className="text-xs text-muted-foreground">Agendados hoje</p>
             </div>
           </CardContent>
         </Card>
@@ -187,7 +189,7 @@ export default function AtendimentoIndividual() {
             <AlertCircle className="h-8 w-8 text-destructive" />
             <div>
               <p className="text-2xl font-bold text-foreground">{presentes}</p>
-              <p className="text-xs text-muted-foreground">Presentes</p>
+              <p className="text-xs text-muted-foreground">Presentes hoje</p>
             </div>
           </CardContent>
         </Card>
@@ -196,7 +198,7 @@ export default function AtendimentoIndividual() {
             <Clock className="h-8 w-8 text-primary" />
             <div>
               <p className="text-2xl font-bold text-foreground">{emAndamento}</p>
-              <p className="text-xs text-muted-foreground">Em Andamento</p>
+              <p className="text-xs text-muted-foreground">Em andamento hoje</p>
             </div>
           </CardContent>
         </Card>
@@ -205,7 +207,7 @@ export default function AtendimentoIndividual() {
             <CheckCircle className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-2xl font-bold text-foreground">{concluidos}</p>
-              <p className="text-xs text-muted-foreground">Concluídos</p>
+              <p className="text-xs text-muted-foreground">Concluídos hoje</p>
             </div>
           </CardContent>
         </Card>
@@ -213,10 +215,19 @@ export default function AtendimentoIndividual() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar solicitação..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Buscar por nome do atendido..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+              <Input
+                type="date"
+                className="w-auto sm:w-44"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                placeholder="Filtrar por data"
+              />
             </div>
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
