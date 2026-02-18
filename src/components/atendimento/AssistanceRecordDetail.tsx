@@ -20,21 +20,21 @@ import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
   AGENDADO: "Agendado",
-  AGUARDANDO: "Aguardando",
+  AGUARDANDO: "Presente",
   EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Concluído",
 };
 
 const statusColor: Record<string, string> = {
   Agendado: "bg-accent/10 text-accent-foreground border-border",
-  Aguardando: "bg-destructive/10 text-destructive border-destructive/20",
+  Presente: "bg-destructive/10 text-destructive border-destructive/20",
   "Em andamento": "bg-primary/10 text-primary border-primary/20",
   Concluído: "bg-muted text-muted-foreground border-border",
 };
 
 const statusIcon: Record<string, typeof Clock> = {
   Agendado: CalendarCheck,
-  Aguardando: AlertCircle,
+  Presente: AlertCircle,
   "Em andamento": Clock,
   Concluído: CheckCircle,
 };
@@ -271,7 +271,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
                 Identificação do Atendido
               </h4>
               <p className="text-xs text-muted-foreground">
-                Insira o CPF para buscar ou cadastrar o atendido. Ao salvar, o status será alterado para "Aguardando".
+                Insira o CPF para buscar ou cadastrar o atendido. Ao salvar, o status será alterado para "Presente".
               </p>
               <div className="flex gap-2">
                 <Input

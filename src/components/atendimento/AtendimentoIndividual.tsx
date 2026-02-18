@@ -17,21 +17,21 @@ import AssistanceRecordDetail from "./AssistanceRecordDetail";
 
 const statusMap: Record<string, string> = {
   AGENDADO: "Agendado",
-  AGUARDANDO: "Aguardando",
+  AGUARDANDO: "Presente",
   EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Concluído",
 };
 
 const statusColor: Record<string, string> = {
   Agendado: "bg-accent/10 text-accent-foreground border-border",
-  Aguardando: "bg-destructive/10 text-destructive border-destructive/20",
+  Presente: "bg-destructive/10 text-destructive border-destructive/20",
   "Em andamento": "bg-primary/10 text-primary border-primary/20",
   Concluído: "bg-muted text-muted-foreground border-border",
 };
 
 const statusIcon: Record<string, typeof Clock> = {
   Agendado: CalendarCheck,
-  Aguardando: AlertCircle,
+  Presente: AlertCircle,
   "Em andamento": Clock,
   Concluído: CheckCircle,
 };
@@ -62,7 +62,7 @@ export default function AtendimentoIndividual() {
   });
 
   const agendados = mapped.filter((s) => s.displayStatus === "Agendado").length;
-  const aguardando = mapped.filter((s) => s.displayStatus === "Aguardando").length;
+  const presentes = mapped.filter((s) => s.displayStatus === "Presente").length;
   const emAndamento = mapped.filter((s) => s.displayStatus === "Em andamento").length;
   const concluidos = mapped.filter((s) => s.displayStatus === "Concluído").length;
 
@@ -171,8 +171,8 @@ export default function AtendimentoIndividual() {
           <CardContent className="flex items-center gap-4 p-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{aguardando}</p>
-              <p className="text-xs text-muted-foreground">Aguardando</p>
+              <p className="text-2xl font-bold text-foreground">{presentes}</p>
+              <p className="text-xs text-muted-foreground">Presentes</p>
             </div>
           </CardContent>
         </Card>
@@ -207,7 +207,7 @@ export default function AtendimentoIndividual() {
               <TabsList>
                 <TabsTrigger value="all">Todas</TabsTrigger>
                 <TabsTrigger value="Agendado">Agendados</TabsTrigger>
-                <TabsTrigger value="Aguardando">Aguardando</TabsTrigger>
+                <TabsTrigger value="Presente">Presentes</TabsTrigger>
                 <TabsTrigger value="Em andamento">Em andamento</TabsTrigger>
                 <TabsTrigger value="Concluído">Concluídos</TabsTrigger>
               </TabsList>
