@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone, Play } from "lucide-react";
+import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone, Play, X } from "lucide-react";
 import { useAssistanceRecords, useCreateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
@@ -228,6 +228,17 @@ export default function AtendimentoIndividual() {
                 onChange={(e) => setDateFilter(e.target.value)}
                 placeholder="Filtrar por data"
               />
+              {(search || dateFilter || tab !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => { setSearch(""); setDateFilter(""); setTab("all"); }}
+                >
+                  <X className="h-4 w-4" />
+                  Limpar filtros
+                </Button>
+              )}
             </div>
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
