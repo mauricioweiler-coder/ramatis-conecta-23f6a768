@@ -5,6 +5,7 @@ import {
   DollarSign,
   GraduationCap,
   Heart,
+  HeartHandshake,
   ScanFace,
   Menu,
   X,
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/financeiro", label: "Financeiro", icon: DollarSign },
   { to: "/cursos", label: "Cursos", icon: GraduationCap },
   { to: "/atendimento", label: "Atendimento Espiritual", icon: Heart },
+  { to: "/atendimentos", label: "Atendimentos", icon: HeartHandshake },
   { to: "/presenca", label: "Presença", icon: ScanFace },
   { to: "/gestao-roles", label: "Gestão de Roles", icon: Shield },
 ];
