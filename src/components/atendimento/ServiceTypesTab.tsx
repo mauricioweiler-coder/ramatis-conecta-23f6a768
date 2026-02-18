@@ -16,6 +16,7 @@ export default function ServiceTypesTab() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<string>("coletivo");
+  const [level, setLevel] = useState<number>(1);
 
   const { data: types = [], isLoading } = useServiceTypes();
   const create = useCreateServiceType();
@@ -28,13 +29,14 @@ export default function ServiceTypesTab() {
       return;
     }
     create.mutate(
-      { name: name.trim(), description: description.trim() || undefined, mode },
+      { name: name.trim(), description: description.trim() || undefined, mode, level },
       {
         onSuccess: () => {
           toast({ title: "Tipo cadastrado!" });
           setName("");
           setDescription("");
           setMode("coletivo");
+          setLevel(1);
           setDialogOpen(false);
         },
         onError: () => toast({ title: "Erro ao cadastrar", variant: "destructive" }),
@@ -75,6 +77,17 @@ export default function ServiceTypesTab() {
                 <Input placeholder="Descrição opcional" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="grid gap-2">
+                <Label>Nível *</Label>
+                <Select value={String(level)} onValueChange={(v) => setLevel(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>Nível {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
                 <Label>Modalidade *</Label>
                 <Select value={mode} onValueChange={setMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -101,6 +114,7 @@ export default function ServiceTypesTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Nível</TableHead>
                 <TableHead>Modalidade</TableHead>
                 <TableHead className="hidden sm:table-cell">Descrição</TableHead>
                 <TableHead>Status</TableHead>
@@ -110,7 +124,7 @@ export default function ServiceTypesTab() {
             <TableBody>
               {types.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Nenhum tipo cadastrado
                   </TableCell>
                 </TableRow>
@@ -118,6 +132,9 @@ export default function ServiceTypesTab() {
                 types.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium text-foreground">{t.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">Nível {t.level}</Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {t.mode === "individual" ? "Individual" : "Coletivo"}

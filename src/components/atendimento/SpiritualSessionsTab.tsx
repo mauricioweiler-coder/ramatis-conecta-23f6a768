@@ -31,7 +31,7 @@ export default function SpiritualSessionsTab() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const { data: sessions = [], isLoading } = useSpiritualSessions();
-  const { data: serviceTypes = [] } = useServiceTypes(true, "coletivo");
+  const { data: serviceTypes = [] } = useServiceTypes(true, undefined, 1);
   const create = useCreateSpiritualSession();
   const { toast } = useToast();
 

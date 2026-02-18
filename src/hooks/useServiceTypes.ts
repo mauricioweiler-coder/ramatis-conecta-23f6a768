@@ -7,16 +7,18 @@ export interface ServiceType {
   description: string | null;
   active: boolean;
   mode: string;
+  level: number;
   created_at: string;
 }
 
-export function useServiceTypes(onlyActive = false, mode?: "coletivo" | "individual") {
+export function useServiceTypes(onlyActive = false, mode?: "coletivo" | "individual", level?: number) {
   return useQuery({
-    queryKey: ["service-types", onlyActive, mode],
+    queryKey: ["service-types", onlyActive, mode, level],
     queryFn: async () => {
-      let query = supabase.from("service_types").select("*").order("name");
+      let query = supabase.from("service_types").select("*").order("level").order("name");
       if (onlyActive) query = query.eq("active", true);
       if (mode) query = query.eq("mode", mode);
+      if (level) query = query.eq("level", level);
       const { data, error } = await query;
       if (error) throw error;
       return data as ServiceType[];
@@ -27,10 +29,10 @@ export function useServiceTypes(onlyActive = false, mode?: "coletivo" | "individ
 export function useCreateServiceType() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; description?: string; mode?: string }) => {
+    mutationFn: async (input: { name: string; description?: string; mode?: string; level?: number }) => {
       const { data, error } = await supabase
         .from("service_types")
-        .insert({ name: input.name, description: input.description || null, mode: input.mode || "coletivo" })
+        .insert({ name: input.name, description: input.description || null, mode: input.mode || "coletivo", level: input.level || 1 })
         .select()
         .single();
       if (error) throw error;
