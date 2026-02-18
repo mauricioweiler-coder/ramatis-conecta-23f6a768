@@ -16,7 +16,8 @@ import {
 import { useAssistanceRecords, useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
-import { useWorkersList } from "@/hooks/useWorkers";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,7 +38,19 @@ export default function RealizarAtendimento() {
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
-  const { data: workers = [] } = useWorkersList();
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ["colaboradores-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, role")
+        .neq("role", "ALUNO")
+        .not("full_name", "is", null)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const record = records.find((r) => r.id === id);
   
@@ -62,13 +75,13 @@ export default function RealizarAtendimento() {
 
   useEffect(() => {
     if (record) {
-      setInterviewer(record.interviewer_name || "");
+      setInterviewer(record.interviewer_name || currentUserName || "");
       setObservations(record.observations || "");
       if (record.status === "EM_ANDAMENTO") {
         setStarted(true);
       }
     }
-  }, [record]);
+  }, [record, currentUserName]);
 
   if (isLoading) {
     return (
@@ -278,9 +291,9 @@ export default function RealizarAtendimento() {
                     <SelectValue placeholder="Selecione o trabalhador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {workers.map((w) => (
-                      <SelectItem key={w.id} value={w.full_name}>
-                        {w.full_name}
+                    {colaboradores.map((c) => (
+                      <SelectItem key={c.id} value={c.full_name!}>
+                        {c.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
