@@ -36,6 +36,39 @@ export function useSearchAtendidos(search: string) {
   });
 }
 
+export function useSearchAtendidoByCpf(cpf: string) {
+  const cleanCpf = cpf.replace(/\D/g, "");
+  return useQuery({
+    queryKey: ["atendidos", "cpf", cleanCpf],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("atendidos")
+        .select("*")
+        .eq("cpf", cleanCpf)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: cleanCpf.length >= 11,
+  });
+}
+
+export function useAtendidoHistory(atendidoId: string | null) {
+  return useQuery({
+    queryKey: ["assistance-records", "history", atendidoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assistance_records")
+        .select("*")
+        .eq("atendido_id", atendidoId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!atendidoId,
+  });
+}
+
 export function useCreateAtendido() {
   const qc = useQueryClient();
   return useMutation({
