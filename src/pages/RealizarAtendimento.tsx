@@ -16,6 +16,7 @@ import {
 import { useAssistanceRecords, useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
+import { useWorkersList } from "@/hooks/useWorkers";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -33,6 +34,7 @@ export default function RealizarAtendimento() {
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
+  const { data: workers = [] } = useWorkersList();
 
   const record = records.find((r) => r.id === id);
 
@@ -253,12 +255,19 @@ export default function RealizarAtendimento() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>Entrevistador / Responsável</Label>
-                <Input
-                  placeholder="Nome do entrevistador"
-                  value={interviewer}
-                  onChange={(e) => setInterviewer(e.target.value)}
-                />
+                <Label>Entrevistador / Responsável *</Label>
+                <Select value={interviewer} onValueChange={setInterviewer}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o trabalhador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.full_name}>
+                        {w.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Observações</Label>

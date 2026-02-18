@@ -16,6 +16,7 @@ import type { AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useSearchAtendidoByCpf, useCreateAtendido, useUpdateAtendido, useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
+import { useWorkersList } from "@/hooks/useWorkers";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -70,6 +71,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const { data: foundAtendido, isFetching: searchingCpf } = useSearchAtendidoByCpf(cpfSearched ? cpf : "");
   const { data: history = [] } = useAtendidoHistory(atendidoId);
+  const { data: workers = [] } = useWorkersList();
   const { toast } = useToast();
 
   // Get current record's referral service type level
@@ -347,7 +349,18 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
 
             <div className="grid gap-2">
               <Label>Entrevistador / Responsável</Label>
-              <Input placeholder="Nome do entrevistador" value={interviewer} onChange={(e) => setInterviewer(e.target.value)} />
+              <Select value={interviewer} onValueChange={setInterviewer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o trabalhador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workers.map((w) => (
+                    <SelectItem key={w.id} value={w.full_name}>
+                      {w.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">

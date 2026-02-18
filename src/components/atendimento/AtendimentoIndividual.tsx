@@ -268,7 +268,7 @@ export default function AtendimentoIndividual() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {s.atendido_id && s.status === "AGUARDANDO" && (
+                        {s.status === "AGUARDANDO" && (
                           <Button
                             size="sm"
                             variant="outline"
