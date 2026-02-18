@@ -17,6 +17,7 @@ import { useAssistanceRecords, useUpdateAssistanceRecord, useCreateAssistanceRec
 import { useAtendidoHistory } from "@/hooks/useAtendidos";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useWorkersList } from "@/hooks/useWorkers";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 const statusMap: Record<string, string> = {
@@ -30,6 +31,8 @@ export default function RealizarAtendimento() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const currentUserName = user?.user_metadata?.full_name || "";
   const { data: records = [], isLoading } = useAssistanceRecords();
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
@@ -37,6 +40,9 @@ export default function RealizarAtendimento() {
   const { data: workers = [] } = useWorkersList();
 
   const record = records.find((r) => r.id === id);
+  
+  // Bloquear acesso a atendimentos concluídos de outro entrevistador
+  const accessDenied = record?.status === "CONCLUIDO" && record?.interviewer_name !== currentUserName;
 
   const [interviewer, setInterviewer] = useState("");
   const [observations, setObservations] = useState("");
@@ -79,6 +85,17 @@ export default function RealizarAtendimento() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
         <p className="text-muted-foreground text-center py-12">Atendimento não encontrado.</p>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => navigate("/atendimentos")}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+        </Button>
+        <p className="text-muted-foreground text-center py-12">Você não tem permissão para visualizar este atendimento concluído.</p>
       </div>
     );
   }
