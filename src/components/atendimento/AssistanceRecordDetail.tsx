@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpReferral, setFollowUpReferral] = useState("");
-
+  const cpfInputRef = useRef<HTMLInputElement>(null);
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
   const createAtendido = useCreateAtendido();
@@ -98,6 +98,21 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
       setFollowUpReferral("");
     }
   }, [record]);
+
+  // Auto-focus CPF field when dialog opens with AGENDADO status
+  useEffect(() => {
+    if (open && record && status === "AGENDADO" && !atendidoId) {
+      setTimeout(() => cpfInputRef.current?.focus(), 100);
+    }
+  }, [open, record, status, atendidoId]);
+
+  const formatCpf = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  };
 
   // When CPF search returns a result, pre-fill fields
   useEffect(() => {
@@ -277,9 +292,11 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
               </p>
               <div className="flex gap-2">
                 <Input
+                  ref={cpfInputRef}
                   placeholder="000.000.000-00"
-                  value={cpf}
-                  onChange={(e) => { setCpf(e.target.value); setCpfSearched(false); }}
+                  value={formatCpf(cpf)}
+                  onChange={(e) => { setCpf(e.target.value.replace(/\D/g, "")); setCpfSearched(false); }}
+                  maxLength={14}
                   className="flex-1"
                 />
                 <Button variant="outline" onClick={handleCpfSearch} disabled={searchingCpf}>
