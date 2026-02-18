@@ -277,6 +277,20 @@ export default function AtendimentoIndividual() {
                             Iniciar
                           </Button>
                         )}
+                        {s.status === "EM_ANDAMENTO" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/atendimentos/${s.id}`);
+                            }}
+                          >
+                            <Clock className="h-3.5 w-3.5" />
+                            Retomar
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
