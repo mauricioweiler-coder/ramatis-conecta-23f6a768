@@ -13,6 +13,7 @@ export interface SpiritualSession {
   session_date: string;
   start_time: string | null;
   responsible_name: string | null;
+  speaker_name: string | null;
   observations: string | null;
   created_at: string;
   session_services: SessionService[];
@@ -43,6 +44,7 @@ export interface CreateSessionInput {
   session_date: string;
   start_time?: string;
   responsible_name?: string;
+  speaker_name?: string;
   observations?: string;
   services: { service_type_id: string; people_count: number }[];
 }
@@ -57,6 +59,7 @@ export function useCreateSpiritualSession() {
           session_date: input.session_date,
           start_time: input.start_time || null,
           responsible_name: input.responsible_name || null,
+          speaker_name: input.speaker_name || null,
           observations: input.observations || null,
         })
         .select()
@@ -86,6 +89,7 @@ export interface UpdateSessionInput {
   session_date?: string;
   start_time?: string;
   responsible_name?: string;
+  speaker_name?: string;
   observations?: string;
   services: { service_type_id: string; people_count: number }[];
 }
@@ -101,6 +105,7 @@ export function useUpdateSpiritualSession() {
           ...updates,
           start_time: updates.start_time || null,
           responsible_name: updates.responsible_name || null,
+          speaker_name: updates.speaker_name || null,
           observations: updates.observations || null,
         })
         .eq("id", id);

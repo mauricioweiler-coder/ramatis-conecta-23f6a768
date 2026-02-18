@@ -585,6 +585,7 @@ export type Database = {
           observations: string | null
           responsible_name: string | null
           session_date: string
+          speaker_name: string | null
           start_time: string | null
           updated_at: string
         }
@@ -594,6 +595,7 @@ export type Database = {
           observations?: string | null
           responsible_name?: string | null
           session_date: string
+          speaker_name?: string | null
           start_time?: string | null
           updated_at?: string
         }
@@ -603,6 +605,7 @@ export type Database = {
           observations?: string | null
           responsible_name?: string | null
           session_date?: string
+          speaker_name?: string | null
           start_time?: string | null
           updated_at?: string
         }

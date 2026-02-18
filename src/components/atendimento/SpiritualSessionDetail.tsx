@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Calendar, Clock, Users, Trash2, Plus, Lock } from "lucide-react";
+import { Loader2, Calendar, Clock, Users, Trash2, Plus, Lock, Mic } from "lucide-react";
 import type { SpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useUpdateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
@@ -28,6 +28,7 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
   const [sessionDate, setSessionDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [responsible, setResponsible] = useState("");
+  const [speaker, setSpeaker] = useState("");
   const [observations, setObservations] = useState("");
   const [services, setServices] = useState<ServiceEntry[]>([]);
 
@@ -40,6 +41,7 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
       setSessionDate(session.session_date);
       setStartTime(session.start_time || "");
       setResponsible(session.responsible_name || "");
+      setSpeaker(session.speaker_name || "");
       setObservations(session.observations || "");
       setServices(
         session.session_services.map((ss) => ({
@@ -82,6 +84,7 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
         session_date: sessionDate,
         start_time: startTime || undefined,
         responsible_name: responsible || undefined,
+        speaker_name: speaker || undefined,
         observations: observations || undefined,
         services: validServices,
       },
@@ -148,6 +151,19 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
                 placeholder="Nome do responsável"
                 value={responsible}
                 onChange={(e) => setResponsible(e.target.value)}
+                disabled={!editable}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1">
+                <Mic className="h-3.5 w-3.5" />
+                Palestrante
+              </Label>
+              <Input
+                placeholder="Nome do palestrante"
+                value={speaker}
+                onChange={(e) => setSpeaker(e.target.value)}
                 disabled={!editable}
               />
             </div>
