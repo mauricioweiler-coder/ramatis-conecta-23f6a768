@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone } from "lucide-react";
-import { useAssistanceRecords, useCreateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
+import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone, Play } from "lucide-react";
+import { useAssistanceRecords, useCreateAssistanceRecord, useUpdateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
 import AssistanceRecordDetail from "./AssistanceRecordDetail";
@@ -47,6 +47,7 @@ export default function AtendimentoIndividual() {
   const { data: records = [], isLoading } = useAssistanceRecords();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const createRecord = useCreateAssistanceRecord();
+  const updateRecord = useUpdateAssistanceRecord();
   const { toast } = useToast();
 
   const mapped = records.map((r) => ({
@@ -223,12 +224,13 @@ export default function AtendimentoIndividual() {
                 <TableHead>Data / Hora</TableHead>
                 <TableHead className="hidden lg:table-cell">Entrevistador</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</TableCell>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</TableCell>
                 </TableRow>
               ) : (
                 filtered.map((s) => {
@@ -258,6 +260,28 @@ export default function AtendimentoIndividual() {
                         <Badge variant="outline" className={statusColor[s.displayStatus]}>
                           <Icon className="mr-1 h-3 w-3" />{s.displayStatus}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {s.atendido_id && s.status === "AGUARDANDO" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateRecord.mutate(
+                                { id: s.id, status: "EM_ANDAMENTO" },
+                                {
+                                  onSuccess: () => toast({ title: "Atendimento iniciado!" }),
+                                  onError: () => toast({ title: "Erro ao iniciar", variant: "destructive" }),
+                                }
+                              );
+                            }}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                            Iniciar
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
