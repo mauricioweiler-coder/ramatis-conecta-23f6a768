@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,8 @@ const statusIcon: Record<string, typeof Clock> = {
 
 export default function AtendimentoIndividual() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserName = user?.user_metadata?.full_name || "";
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,10 +56,16 @@ export default function AtendimentoIndividual() {
   const createRecord = useCreateAssistanceRecord();
   const { toast } = useToast();
 
-  const mapped = records.map((r) => ({
-    ...r,
-    displayStatus: statusMap[r.status || "AGENDADO"] || "Agendado",
-  }));
+  const mapped = records
+    .filter((r) => {
+      // Atendimentos concluídos só visíveis para o entrevistador
+      if (r.status === "CONCLUIDO" && r.interviewer_name !== currentUserName) return false;
+      return true;
+    })
+    .map((r) => ({
+      ...r,
+      displayStatus: statusMap[r.status || "AGENDADO"] || "Agendado",
+    }));
 
   const filtered = mapped.filter((s) => {
     const matchSearch = s.visitor_name.toLowerCase().includes(search.toLowerCase());
