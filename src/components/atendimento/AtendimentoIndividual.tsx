@@ -9,26 +9,29 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone } from "lucide-react";
 import { useAssistanceRecords, useCreateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
 import AssistanceRecordDetail from "./AssistanceRecordDetail";
 
 const statusMap: Record<string, string> = {
-  AGUARDANDO: "Pendente",
+  AGENDADO: "Agendado",
+  AGUARDANDO: "Aguardando",
   EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Concluído",
 };
 
 const statusColor: Record<string, string> = {
-  Pendente: "bg-destructive/10 text-destructive border-destructive/20",
+  Agendado: "bg-accent/10 text-accent-foreground border-border",
+  Aguardando: "bg-destructive/10 text-destructive border-destructive/20",
   "Em andamento": "bg-primary/10 text-primary border-primary/20",
   Concluído: "bg-muted text-muted-foreground border-border",
 };
 
 const statusIcon: Record<string, typeof Clock> = {
-  Pendente: AlertCircle,
+  Agendado: CalendarCheck,
+  Aguardando: AlertCircle,
   "Em andamento": Clock,
   Concluído: CheckCircle,
 };
@@ -39,7 +42,7 @@ export default function AtendimentoIndividual() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<AssistanceRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [form, setForm] = useState({ visitor_name: "", symptom: "", referral: "", observations: "" });
+  const [form, setForm] = useState({ visitor_name: "", phone: "", symptom: "", referral: "", observations: "" });
 
   const { data: records = [], isLoading } = useAssistanceRecords();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
@@ -48,7 +51,7 @@ export default function AtendimentoIndividual() {
 
   const mapped = records.map((r) => ({
     ...r,
-    displayStatus: statusMap[r.status || "AGUARDANDO"] || "Pendente",
+    displayStatus: statusMap[r.status || "AGENDADO"] || "Agendado",
   }));
 
   const filtered = mapped.filter((s) => {
@@ -57,7 +60,8 @@ export default function AtendimentoIndividual() {
     return matchSearch && matchTab;
   });
 
-  const pendentes = mapped.filter((s) => s.displayStatus === "Pendente").length;
+  const agendados = mapped.filter((s) => s.displayStatus === "Agendado").length;
+  const aguardando = mapped.filter((s) => s.displayStatus === "Aguardando").length;
   const emAndamento = mapped.filter((s) => s.displayStatus === "Em andamento").length;
   const concluidos = mapped.filter((s) => s.displayStatus === "Concluído").length;
 
@@ -69,14 +73,16 @@ export default function AtendimentoIndividual() {
     createRecord.mutate(
       {
         visitor_name: form.visitor_name,
+        phone: form.phone || null,
         symptom: form.symptom,
         referral: form.referral || null,
         observations: form.observations || null,
+        status: "AGENDADO",
       },
       {
         onSuccess: () => {
           toast({ title: "Solicitação registrada!" });
-          setForm({ visitor_name: "", symptom: "", referral: "", observations: "" });
+          setForm({ visitor_name: "", phone: "", symptom: "", referral: "", observations: "" });
           setDialogOpen(false);
         },
         onError: () => toast({ title: "Erro ao registrar", variant: "destructive" }),
@@ -106,12 +112,19 @@ export default function AtendimentoIndividual() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Nova Solicitação</DialogTitle>
-              <DialogDescription>Registre uma nova solicitação de atendimento espiritual</DialogDescription>
+              <DialogDescription>Registre uma nova solicitação de atendimento (por telefone)</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Nome do Solicitante *</Label>
                 <Input placeholder="Nome completo" value={form.visitor_name} onChange={(e) => setForm({ ...form, visitor_name: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" />
+                  Telefone
+                </Label>
+                <Input placeholder="(00) 00000-0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div className="grid gap-2">
                 <Label>Encaminhamento</Label>
@@ -143,13 +156,22 @@ export default function AtendimentoIndividual() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <CalendarCheck className="h-8 w-8 text-muted-foreground" />
+            <div>
+              <p className="text-2xl font-bold text-foreground">{agendados}</p>
+              <p className="text-xs text-muted-foreground">Agendados</p>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
             <AlertCircle className="h-8 w-8 text-destructive" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{pendentes}</p>
-              <p className="text-xs text-muted-foreground">Pendentes</p>
+              <p className="text-2xl font-bold text-foreground">{aguardando}</p>
+              <p className="text-xs text-muted-foreground">Aguardando</p>
             </div>
           </CardContent>
         </Card>
@@ -183,7 +205,8 @@ export default function AtendimentoIndividual() {
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="all">Todas</TabsTrigger>
-                <TabsTrigger value="Pendente">Pendentes</TabsTrigger>
+                <TabsTrigger value="Agendado">Agendados</TabsTrigger>
+                <TabsTrigger value="Aguardando">Aguardando</TabsTrigger>
                 <TabsTrigger value="Em andamento">Em andamento</TabsTrigger>
                 <TabsTrigger value="Concluído">Concluídos</TabsTrigger>
               </TabsList>
@@ -195,6 +218,7 @@ export default function AtendimentoIndividual() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Telefone</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Data / Hora</TableHead>
                 <TableHead className="hidden lg:table-cell">Entrevistador</TableHead>
@@ -204,11 +228,11 @@ export default function AtendimentoIndividual() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma solicitação encontrada</TableCell>
                 </TableRow>
               ) : (
                 filtered.map((s) => {
-                  const Icon = statusIcon[s.displayStatus];
+                  const Icon = statusIcon[s.displayStatus] || CalendarCheck;
                   return (
                     <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(s); setDetailOpen(true); }}>
                       <TableCell>
@@ -216,6 +240,11 @@ export default function AtendimentoIndividual() {
                           <p className="font-medium text-foreground">{s.visitor_name}</p>
                           <p className="text-xs text-muted-foreground line-clamp-1">{s.symptom}</p>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {s.phone ? (
+                          <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{s.phone}</span>
+                        ) : "—"}
                       </TableCell>
                       <TableCell><Badge variant="outline">{s.referral || "—"}</Badge></TableCell>
                       <TableCell className="text-muted-foreground">

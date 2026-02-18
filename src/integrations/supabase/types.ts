@@ -17,6 +17,7 @@ export type Database = {
       assistance_records: {
         Row: {
           address: string | null
+          atendido_id: string | null
           created_at: string
           email: string | null
           id: string
@@ -34,6 +35,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          atendido_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -51,6 +53,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          atendido_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -67,6 +70,13 @@ export type Database = {
           visitor_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assistance_records_atendido_id_fkey"
+            columns: ["atendido_id"]
+            isOneToOne: false
+            referencedRelation: "atendidos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assistance_records_linked_previous_id_fkey"
             columns: ["linked_previous_id"]
@@ -89,6 +99,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      atendidos: {
+        Row: {
+          address: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       attendance: {
         Row: {
