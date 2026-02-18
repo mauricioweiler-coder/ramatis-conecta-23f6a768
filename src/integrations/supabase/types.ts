@@ -515,6 +515,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          level: number
           mode: string
           name: string
         }
@@ -523,6 +524,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          level?: number
           mode?: string
           name: string
         }
@@ -531,6 +533,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          level?: number
           mode?: string
           name?: string
         }
