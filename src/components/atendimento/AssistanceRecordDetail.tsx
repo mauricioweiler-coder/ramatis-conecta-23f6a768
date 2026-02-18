@@ -18,6 +18,7 @@ import { useSearchAtendidoByCpf, useCreateAtendido, useUpdateAtendido, useAtendi
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useWorkersList } from "@/hooks/useWorkers";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const statusMap: Record<string, string> = {
   AGENDADO: "Agendado",
@@ -49,6 +50,8 @@ interface Props {
 }
 
 export default function AssistanceRecordDetail({ record, open, onOpenChange }: Props) {
+  const { user } = useAuth();
+  const currentUserName = user?.user_metadata?.full_name || "";
   const [status, setStatus] = useState("");
   const [interviewer, setInterviewer] = useState("");
   const [referral, setReferral] = useState("");
@@ -126,7 +129,29 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
     }
   }, [foundAtendido, cpfSearched]);
 
+  // Block viewing completed records if not the interviewer
+  const isBlockedConcluido = record?.status === "CONCLUIDO" && record?.interviewer_name !== currentUserName;
+
   if (!record) return null;
+
+  if (isBlockedConcluido) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Acesso Restrito
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Este atendimento foi concluído por outro entrevistador. Apenas o responsável pode visualizar os detalhes.
+          </p>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const displayStatus = statusMap[status] || "Agendado";
   const Icon = statusIcon[displayStatus] || CalendarCheck;

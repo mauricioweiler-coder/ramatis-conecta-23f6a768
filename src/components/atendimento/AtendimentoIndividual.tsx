@@ -73,7 +73,7 @@ export default function AtendimentoIndividual() {
   // Lista: aplica restrição de visibilidade para concluídos + filtros de busca
   const filtered = allMapped.filter((s) => {
     // Concluídos só visíveis para o entrevistador
-    if (s.status === "CONCLUIDO" && s.interviewer_name !== currentUserName) return false;
+    if (s.status === "CONCLUIDO" && s.interviewer_name?.trim().toLowerCase() !== currentUserName.trim().toLowerCase()) return false;
     const matchSearch = s.visitor_name.toLowerCase().includes(search.toLowerCase());
     const matchTab = tab === "all" || s.displayStatus === tab;
     const matchDate = !dateFilter || new Date(s.created_at).toISOString().slice(0, 10) === dateFilter;
