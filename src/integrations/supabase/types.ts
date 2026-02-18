@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          interviewer_id: string | null
           interviewer_name: string | null
           linked_previous_id: string | null
           observations: string | null
@@ -39,6 +40,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          interviewer_id?: string | null
           interviewer_name?: string | null
           linked_previous_id?: string | null
           observations?: string | null
@@ -57,6 +59,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          interviewer_id?: string | null
           interviewer_name?: string | null
           linked_previous_id?: string | null
           observations?: string | null
