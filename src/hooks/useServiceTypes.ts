@@ -42,6 +42,20 @@ export function useCreateServiceType() {
   });
 }
 
+export function useUpdateServiceType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; name: string; description?: string | null; mode?: string; level?: number }) => {
+      const { error } = await supabase
+        .from("service_types")
+        .update({ name: input.name, description: input.description ?? null, mode: input.mode || "coletivo", level: input.level || 1 })
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["service-types"] }),
+  });
+}
+
 export function useToggleServiceType() {
   const qc = useQueryClient();
   return useMutation({
@@ -49,6 +63,20 @@ export function useToggleServiceType() {
       const { error } = await supabase
         .from("service_types")
         .update({ active })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["service-types"] }),
+  });
+}
+
+export function useDeleteServiceType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("service_types")
+        .delete()
         .eq("id", id);
       if (error) throw error;
     },
