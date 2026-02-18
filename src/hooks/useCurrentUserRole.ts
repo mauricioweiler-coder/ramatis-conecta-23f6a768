@@ -11,6 +11,7 @@ const ROUTE_ACCESS: Record<string, AppRole[]> = {
   "/financeiro": ["admin", "diretor"],
   "/cursos": ["admin", "diretor", "trabalhador", "professor", "estagiario", "aluno"],
   "/atendimento": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
+  "/atendimentos": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
   "/presenca": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
   "/gestao-roles": ["admin", "diretor"],
   "/meu-perfil": ["admin", "diretor", "trabalhador", "professor", "estagiario", "aluno"],
