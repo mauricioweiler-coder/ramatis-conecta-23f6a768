@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2, ArrowLeft, User, Phone, MapPin, Mail, FileText,
-  ArrowRight, Clock, CheckCircle, History, Plus, CalendarCheck,
+  ArrowRight, Clock, CheckCircle, History, Play, CalendarCheck,
 } from "lucide-react";
 import { useAssistanceRecords, useUpdateAssistanceRecord, useCreateAssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useAtendidoHistory } from "@/hooks/useAtendidos";
@@ -36,33 +37,30 @@ export default function RealizarAtendimento() {
   const record = records.find((r) => r.id === id);
 
   const [interviewer, setInterviewer] = useState("");
-  const [referral, setReferral] = useState("");
   const [observations, setObservations] = useState("");
-  const [showFollowUp, setShowFollowUp] = useState(false);
-  const [followUpDate, setFollowUpDate] = useState("");
+  const [started, setStarted] = useState(false);
+
+  // Finalização
+  const [concluido, setConcluido] = useState(true); // true = concluído sem encaminhamento
   const [followUpReferral, setFollowUpReferral] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
 
   const { data: history = [] } = useAtendidoHistory(record?.atendido_id || null);
 
   // Get current referral level for follow-up filtering
-  const currentServiceType = individualTypes.find((t) => t.name === (record?.referral || referral));
+  const currentServiceType = individualTypes.find((t) => t.name === record?.referral);
   const currentLevel = currentServiceType?.level || 1;
   const followUpTypes = individualTypes.filter((t) => t.level >= currentLevel && t.level <= currentLevel + 1);
 
   useEffect(() => {
     if (record) {
       setInterviewer(record.interviewer_name || "");
-      setReferral(record.referral || "");
       setObservations(record.observations || "");
+      if (record.status === "EM_ANDAMENTO") {
+        setStarted(true);
+      }
     }
   }, [record]);
-
-  // Auto-set status to EM_ANDAMENTO when opening if AGUARDANDO
-  useEffect(() => {
-    if (record && record.status === "AGUARDANDO") {
-      update.mutate({ id: record.id, status: "EM_ANDAMENTO" });
-    }
-  }, [record?.id]);
 
   if (isLoading) {
     return (
@@ -84,71 +82,76 @@ export default function RealizarAtendimento() {
   }
 
   const previousRecords = history.filter((h) => h.id !== record.id);
+  const displayStatus = statusMap[record.status || "AGENDADO"] || "Agendado";
+  const isEditable = record.status !== "CONCLUIDO";
 
-  const handleSave = () => {
+  const handleStart = () => {
     update.mutate(
+      { id: record.id, status: "EM_ANDAMENTO" },
       {
-        id: record.id,
-        interviewer_name: interviewer || null,
-        referral: referral || null,
-        observations: observations || null,
-      },
-      {
-        onSuccess: () => toast({ title: "Atendimento salvo!" }),
-        onError: () => toast({ title: "Erro ao salvar", variant: "destructive" }),
+        onSuccess: () => {
+          setStarted(true);
+          toast({ title: "Atendimento iniciado!" });
+        },
+        onError: () => toast({ title: "Erro ao iniciar", variant: "destructive" }),
       }
     );
   };
 
-  const handleConclude = () => {
+  const handleFinalize = () => {
+    if (!concluido && !followUpDate) {
+      toast({ title: "Informe a data do próximo atendimento", variant: "destructive" });
+      return;
+    }
+    if (!concluido && !followUpReferral) {
+      toast({ title: "Selecione o encaminhamento do próximo atendimento", variant: "destructive" });
+      return;
+    }
+
+    // Conclude current record
     update.mutate(
       {
         id: record.id,
         status: "CONCLUIDO",
         interviewer_name: interviewer || null,
-        referral: referral || null,
         observations: observations || null,
+        referral: concluido ? (record.referral || null) : followUpReferral,
       },
       {
         onSuccess: () => {
-          toast({ title: "Atendimento concluído!" });
-          navigate("/atendimentos");
+          if (concluido) {
+            toast({ title: "Atendimento concluído!" });
+            navigate("/atendimentos");
+            return;
+          }
+          // Create follow-up record
+          createRecord.mutate(
+            {
+              visitor_name: record.visitor_name,
+              phone: record.phone || null,
+              email: record.email || null,
+              address: record.address || null,
+              symptom: record.symptom,
+              referral: followUpReferral,
+              observations: `Encaminhamento do atendimento de ${new Date(record.created_at).toLocaleDateString("pt-BR")}. Responsável anterior: ${interviewer || "—"}`,
+              status: "AGENDADO",
+              atendido_id: record.atendido_id,
+              linked_previous_id: record.id,
+              interviewer_name: null,
+            },
+            {
+              onSuccess: () => {
+                toast({ title: "Atendimento concluído e próximo agendado!" });
+                navigate("/atendimentos");
+              },
+              onError: () => toast({ title: "Erro ao agendar próximo atendimento", variant: "destructive" }),
+            }
+          );
         },
         onError: () => toast({ title: "Erro ao concluir", variant: "destructive" }),
       }
     );
   };
-
-  const handleCreateFollowUp = () => {
-    if (!followUpDate) {
-      toast({ title: "Informe a data do próximo atendimento", variant: "destructive" });
-      return;
-    }
-    createRecord.mutate(
-      {
-        visitor_name: record.visitor_name,
-        phone: record.phone || null,
-        email: record.email || null,
-        address: record.address || null,
-        symptom: record.symptom,
-        referral: followUpReferral || referral || null,
-        observations: `Encaminhamento do atendimento de ${new Date(record.created_at).toLocaleDateString("pt-BR")}. Responsável anterior: ${interviewer || "—"}`,
-        status: "AGENDADO",
-        atendido_id: record.atendido_id,
-        linked_previous_id: record.id,
-        interviewer_name: null,
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Novo atendimento agendado!" });
-          setShowFollowUp(false);
-        },
-        onError: () => toast({ title: "Erro ao agendar", variant: "destructive" }),
-      }
-    );
-  };
-
-  const displayStatus = statusMap[record.status || "AGENDADO"] || "Agendado";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -210,55 +213,158 @@ export default function RealizarAtendimento() {
               </div>
             </>
           )}
+          {record.referral && (
+            <>
+              <Separator className="my-3" />
+              <div className="text-sm">
+                <span className="font-medium text-foreground flex items-center gap-1 mb-1">
+                  <ArrowRight className="h-3.5 w-3.5" /> Encaminhamento atual
+                </span>
+                <Badge variant="outline">{record.referral}</Badge>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Attendance Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Dados do Atendimento</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>Entrevistador / Responsável</Label>
-              <Input
-                placeholder="Nome do entrevistador"
-                value={interviewer}
-                onChange={(e) => setInterviewer(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label className="flex items-center gap-1">
-                <ArrowRight className="h-3.5 w-3.5" />
-                Encaminhamento
-              </Label>
-              <Select value={referral} onValueChange={setReferral}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o encaminhamento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {individualTypes.map((t) => (
-                    <SelectItem key={t.id} value={t.name}>
-                      {t.name} (Nível {t.level})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+      {/* Botão Iniciar - aparece antes de iniciar */}
+      {isEditable && !started && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-8">
+            <Play className="h-12 w-12 text-primary" />
+            <p className="text-muted-foreground text-center">
+              Clique para iniciar o atendimento. O status será alterado para "Em andamento".
+            </p>
+            <Button size="lg" onClick={handleStart} disabled={update.isPending}>
+              {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Play className="mr-2 h-4 w-4" />
+              Iniciar Atendimento
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="grid gap-2">
-            <Label>Observações</Label>
-            <Textarea
-              placeholder="Observações do atendimento..."
-              value={observations}
-              onChange={(e) => setObservations(e.target.value)}
-              rows={4}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Attendance Form - aparece após iniciar */}
+      {started && isEditable && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Dados do Atendimento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Entrevistador / Responsável</Label>
+                <Input
+                  placeholder="Nome do entrevistador"
+                  value={interviewer}
+                  onChange={(e) => setInterviewer(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Observações</Label>
+                <Textarea
+                  placeholder="Observações do atendimento..."
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Finalização */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CheckCircle className="h-4 w-4" />
+                Finalizar Atendimento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="concluido"
+                  checked={concluido}
+                  onCheckedChange={(v) => setConcluido(!!v)}
+                />
+                <Label htmlFor="concluido" className="cursor-pointer">
+                  Atendimento concluído (sem necessidade de encaminhamento)
+                </Label>
+              </div>
+
+              {!concluido && (
+                <div className="rounded-lg border border-border p-4 space-y-4 bg-muted/30">
+                  <p className="text-sm text-muted-foreground">
+                    O atendido será encaminhado para um novo atendimento. Preencha os dados abaixo:
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label className="flex items-center gap-1">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        Encaminhamento (mesmo nível ou +1) *
+                      </Label>
+                      <Select value={followUpReferral} onValueChange={setFollowUpReferral}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {followUpTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.name}>
+                              {t.name} (Nível {t.level})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="flex items-center gap-1">
+                        <CalendarCheck className="h-3.5 w-3.5" />
+                        Data do próximo atendimento *
+                      </Label>
+                      <Input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => navigate("/atendimentos")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
+                <Button onClick={handleFinalize} disabled={update.isPending || createRecord.isPending}>
+                  {(update.isPending || createRecord.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {concluido ? "Concluir Atendimento" : "Concluir e Agendar Próximo"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* View-only for concluded */}
+      {record.status === "CONCLUIDO" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Dados do Atendimento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {record.interviewer_name && (
+              <div className="text-sm">
+                <span className="font-medium text-foreground">Entrevistador:</span>{" "}
+                <span className="text-muted-foreground">{record.interviewer_name}</span>
+              </div>
+            )}
+            {record.observations && (
+              <div className="text-sm">
+                <span className="font-medium text-foreground">Observações:</span>{" "}
+                <span className="text-muted-foreground">{record.observations}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* History */}
       {previousRecords.length > 0 && (
@@ -298,73 +404,15 @@ export default function RealizarAtendimento() {
         </Card>
       )}
 
-      {/* Follow-up */}
-      {!showFollowUp && (
-        <Button variant="outline" className="w-full" onClick={() => setShowFollowUp(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Agendar Próximo Atendimento (encaminhamento)
-        </Button>
-      )}
-
-      {showFollowUp && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarCheck className="h-4 w-4" />
-              Agendar Próximo Atendimento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              As informações do atendido e o histórico serão levados para o próximo atendimento.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Data do próximo atendimento *</Label>
-                <Input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Encaminhamento (mesmo nível ou +1)</Label>
-                <Select value={followUpReferral} onValueChange={setFollowUpReferral}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {followUpTypes.map((t) => (
-                      <SelectItem key={t.id} value={t.name}>
-                        {t.name} (Nível {t.level})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowFollowUp(false)}>Cancelar</Button>
-              <Button onClick={handleCreateFollowUp} disabled={createRecord.isPending}>
-                {createRecord.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Agendar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Actions */}
-      <div className="flex justify-between gap-3 pt-2 pb-8">
-        <Button variant="outline" onClick={() => navigate("/atendimentos")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleSave} disabled={update.isPending}>
-            {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar
-          </Button>
-          <Button onClick={handleConclude} disabled={update.isPending}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Concluir Atendimento
+      {/* Voltar button at bottom for concluded */}
+      {record.status === "CONCLUIDO" && (
+        <div className="pb-8">
+          <Button variant="outline" onClick={() => navigate("/atendimentos")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
           </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
