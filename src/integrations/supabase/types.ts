@@ -655,6 +655,36 @@ export type Database = {
           },
         ]
       }
+      user_permissions: {
+        Row: {
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          module: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          module: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          module?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -763,6 +793,10 @@ export type Database = {
     }
     Functions: {
       enable_authenticated_access: { Args: { tbl: string }; Returns: undefined }
+      has_permission: {
+        Args: { _module: string; _type?: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

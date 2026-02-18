@@ -1,24 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyPermissions, routeToModule } from "@/hooks/useUserPermissions";
 
 export type AppRole = "admin" | "diretor" | "trabalhador" | "professor" | "estagiario" | "aluno";
 
-// Access matrix: which roles can access which routes
-const ROUTE_ACCESS: Record<string, AppRole[]> = {
-  "/": ["admin", "diretor", "trabalhador", "professor", "estagiario", "aluno"],
-  "/colaboradores": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
-  "/financeiro": ["admin", "diretor"],
-  "/cursos": ["admin", "diretor", "trabalhador", "professor", "estagiario", "aluno"],
-  "/atendimento": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
-  "/atendimentos": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
-  "/presenca": ["admin", "diretor", "trabalhador", "professor", "estagiario"],
-  "/gestao-roles": ["admin", "diretor"],
-  "/meu-perfil": ["admin", "diretor", "trabalhador", "professor", "estagiario", "aluno"],
-};
+// Routes that are always accessible (no permission needed)
+const ALWAYS_ACCESSIBLE = ["/", "/meu-perfil"];
+// Routes restricted to admin/diretor only (no permission override)
+const ADMIN_ONLY_ROUTES = ["/gestao-roles"];
 
 export function useCurrentUserRole() {
   const { user } = useAuth();
+  const { data: permissions = [], isLoading: permissionsLoading } = useMyPermissions();
 
   const query = useQuery({
     queryKey: ["current-user-role", user?.id],
@@ -36,24 +30,40 @@ export function useCurrentUserRole() {
   });
 
   const role = query.data ?? "aluno";
-
-  const canAccess = (route: string): boolean => {
-    const allowed = ROUTE_ACCESS[route];
-    if (!allowed) return true; // unknown routes are open
-    return allowed.includes(role);
-  };
-
   const isAdmin = role === "admin";
   const isDiretor = role === "diretor";
   const isAdminOrDiretor = isAdmin || isDiretor;
 
+  const canAccess = (route: string): boolean => {
+    // Always accessible routes
+    if (ALWAYS_ACCESSIBLE.includes(route)) return true;
+    // Admin-only routes
+    if (ADMIN_ONLY_ROUTES.includes(route)) return isAdminOrDiretor;
+    // Admin/Diretor always have full access
+    if (isAdminOrDiretor) return true;
+    // Check permissions for the module
+    const module = routeToModule(route);
+    if (!module) return true;
+    const perm = permissions.find((p) => p.module === module);
+    return perm?.can_view === true;
+  };
+
+  const canEdit = (route: string): boolean => {
+    if (isAdminOrDiretor) return true;
+    const module = routeToModule(route);
+    if (!module) return false;
+    const perm = permissions.find((p) => p.module === module);
+    return perm?.can_edit === true;
+  };
+
   return {
     role,
-    isLoading: query.isLoading,
+    isLoading: query.isLoading || permissionsLoading,
     canAccess,
+    canEdit,
     isAdmin,
     isDiretor,
     isAdminOrDiretor,
-    ROUTE_ACCESS,
+    permissions,
   };
 }
