@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Clock, CheckCircle, Search, AlertCircle, Loader2, CalendarCheck, Phone, Play } from "lucide-react";
-import { useAssistanceRecords, useCreateAssistanceRecord, useUpdateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
+import { useAssistanceRecords, useCreateAssistanceRecord, type AssistanceRecord } from "@/hooks/useAssistanceRecords";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
 import { useToast } from "@/hooks/use-toast";
 import AssistanceRecordDetail from "./AssistanceRecordDetail";
@@ -37,6 +38,7 @@ const statusIcon: Record<string, typeof Clock> = {
 };
 
 export default function AtendimentoIndividual() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,7 +49,6 @@ export default function AtendimentoIndividual() {
   const { data: records = [], isLoading } = useAssistanceRecords();
   const { data: individualTypes = [] } = useServiceTypes(true, "individual");
   const createRecord = useCreateAssistanceRecord();
-  const updateRecord = useUpdateAssistanceRecord();
   const { toast } = useToast();
 
   const mapped = records.map((r) => ({
@@ -269,13 +270,7 @@ export default function AtendimentoIndividual() {
                             className="gap-1"
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateRecord.mutate(
-                                { id: s.id, status: "EM_ANDAMENTO" },
-                                {
-                                  onSuccess: () => toast({ title: "Atendimento iniciado!" }),
-                                  onError: () => toast({ title: "Erro ao iniciar", variant: "destructive" }),
-                                }
-                              );
+                              navigate(`/atendimentos/${s.id}`);
                             }}
                           >
                             <Play className="h-3.5 w-3.5" />
