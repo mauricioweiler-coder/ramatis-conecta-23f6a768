@@ -12,6 +12,7 @@ export function useWorkersList() {
       const { data, error } = await supabase
         .from("workers")
         .select("*")
+        .eq("status", "ATIVO")
         .order("full_name");
       if (error) throw error;
       return data;
