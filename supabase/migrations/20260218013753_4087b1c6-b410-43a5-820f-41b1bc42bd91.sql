@@ -1,0 +1,1 @@
+ALTER TABLE public.spiritual_sessions ADD COLUMN speaker_name text;
