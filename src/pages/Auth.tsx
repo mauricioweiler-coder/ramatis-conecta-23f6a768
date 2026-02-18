@@ -135,8 +135,8 @@ export default function Auth() {
               {mode === "login" ? "Entrar" : mode === "register" ? "Cadastrar" : "Enviar e-mail de recuperação"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            {mode === "forgot" ? (
+          {mode === "forgot" && (
+            <div className="mt-4 text-center text-sm">
               <button
                 type="button"
                 onClick={() => setMode("login")}
@@ -144,16 +144,8 @@ export default function Auth() {
               >
                 Voltar ao login
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setMode(mode === "login" ? "register" : "login")}
-                className="text-primary hover:underline"
-              >
-                {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
