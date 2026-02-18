@@ -32,7 +32,7 @@ export default function RealizarAtendimento() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const currentUserName = user?.user_metadata?.full_name || "";
+  
   const { data: records = [], isLoading } = useAssistanceRecords();
   const update = useUpdateAssistanceRecord();
   const createRecord = useCreateAssistanceRecord();
@@ -41,10 +41,10 @@ export default function RealizarAtendimento() {
 
   const record = records.find((r) => r.id === id);
   
-  // Bloquear acesso a atendimentos concluídos de outro entrevistador
-  const accessDenied = record?.status === "CONCLUIDO" && record?.interviewer_name !== currentUserName;
+  // Bloquear acesso a atendimentos concluídos de outro entrevistador (por ID)
+  const accessDenied = record?.status === "CONCLUIDO" && record?.interviewer_id !== user?.id;
 
-  const [interviewer, setInterviewer] = useState("");
+  const [interviewerId, setInterviewerId] = useState("");
   const [observations, setObservations] = useState("");
   const [started, setStarted] = useState(false);
 
@@ -62,13 +62,14 @@ export default function RealizarAtendimento() {
 
   useEffect(() => {
     if (record) {
-      setInterviewer(record.interviewer_name || currentUserName || "");
+      // Pre-select current user or existing interviewer
+      setInterviewerId(record.interviewer_id || user?.id || "");
       setObservations(record.observations || "");
       if (record.status === "EM_ANDAMENTO") {
         setStarted(true);
       }
     }
-  }, [record, currentUserName]);
+  }, [record, user?.id]);
 
   if (isLoading) {
     return (
@@ -103,6 +104,8 @@ export default function RealizarAtendimento() {
   const previousRecords = history.filter((h) => h.id !== record.id);
   const displayStatus = statusMap[record.status || "AGENDADO"] || "Agendado";
   const isEditable = record.status !== "CONCLUIDO";
+  const selectedWorker = workers.find((w) => w.id === interviewerId);
+  const interviewerName = selectedWorker?.full_name || "";
 
   const handleStart = () => {
     update.mutate(
@@ -132,7 +135,8 @@ export default function RealizarAtendimento() {
       {
         id: record.id,
         status: "CONCLUIDO",
-        interviewer_name: interviewer || null,
+        interviewer_name: interviewerName || null,
+        interviewer_id: interviewerId || null,
         observations: observations || null,
         referral: concluido ? (record.referral || null) : followUpReferral,
       },
@@ -152,7 +156,7 @@ export default function RealizarAtendimento() {
               address: record.address || null,
               symptom: record.symptom,
               referral: followUpReferral,
-              observations: `Encaminhamento do atendimento de ${new Date(record.created_at).toLocaleDateString("pt-BR")}. Responsável anterior: ${interviewer || "—"}`,
+              observations: `Encaminhamento do atendimento de ${new Date(record.created_at).toLocaleDateString("pt-BR")}. Responsável anterior: ${interviewerName || "—"}`,
               status: "AGENDADO",
               atendido_id: record.atendido_id,
               linked_previous_id: record.id,
@@ -273,13 +277,13 @@ export default function RealizarAtendimento() {
             <CardContent className="space-y-4">
               <div className="grid gap-2">
                 <Label>Entrevistador / Responsável *</Label>
-                <Select value={interviewer} onValueChange={setInterviewer}>
+                <Select value={interviewerId} onValueChange={setInterviewerId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o trabalhador" />
                   </SelectTrigger>
                   <SelectContent>
                     {workers.map((w) => (
-                      <SelectItem key={w.id} value={w.full_name}>
+                      <SelectItem key={w.id} value={w.id}>
                         {w.full_name}
                       </SelectItem>
                     ))}

@@ -51,9 +51,8 @@ interface Props {
 
 export default function AssistanceRecordDetail({ record, open, onOpenChange }: Props) {
   const { user } = useAuth();
-  const currentUserName = user?.user_metadata?.full_name || "";
   const [status, setStatus] = useState("");
-  const [interviewer, setInterviewer] = useState("");
+  const [interviewerId, setInterviewerId] = useState("");
   const [referral, setReferral] = useState("");
   const [observations, setObservations] = useState("");
   const [phone, setPhone] = useState("");
@@ -86,7 +85,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
   useEffect(() => {
     if (record) {
       setStatus(record.status || "AGENDADO");
-      setInterviewer(record.interviewer_name || "");
+      setInterviewerId(record.interviewer_id || "");
       setReferral(record.referral || "");
       setObservations(record.observations || "");
       setPhone(record.phone || "");
@@ -129,8 +128,8 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
     }
   }, [foundAtendido, cpfSearched]);
 
-  // Block viewing completed records if not the interviewer
-  const isBlockedConcluido = record?.status === "CONCLUIDO" && record?.interviewer_name !== currentUserName;
+  // Block viewing completed records if not the interviewer (by user ID)
+  const isBlockedConcluido = record?.status === "CONCLUIDO" && record?.interviewer_id !== user?.id;
 
   if (!record) return null;
 
@@ -205,11 +204,15 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
     // If transitioning from AGENDADO with atendido data, set to AGUARDANDO
     const finalStatus = isAgendado && finalAtendidoId ? "AGUARDANDO" : status;
 
+    const selectedWorker = workers.find((w) => w.id === interviewerId);
+    const interviewerName = selectedWorker?.full_name || "";
+
     update.mutate(
       {
         id: record.id,
         status: finalStatus,
-        interviewer_name: interviewer || null,
+        interviewer_name: interviewerName || null,
+        interviewer_id: interviewerId || null,
         referral: referral || null,
         observations: observations || null,
         phone: phone || null,
@@ -242,7 +245,7 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
         address: address || null,
         symptom: record.symptom,
         referral: followUpReferral || referral || null,
-        observations: `Encaminhamento do atendimento de ${createdAt.toLocaleDateString("pt-BR")}. Responsável anterior: ${interviewer || "—"}`,
+        observations: `Encaminhamento do atendimento de ${createdAt.toLocaleDateString("pt-BR")}. Responsável anterior: ${workers.find(w => w.id === interviewerId)?.full_name || "—"}`,
         status: "AGENDADO",
         atendido_id: atendidoId,
         linked_previous_id: record.id,
@@ -391,13 +394,13 @@ export default function AssistanceRecordDetail({ record, open, onOpenChange }: P
 
             <div className="grid gap-2">
               <Label>Entrevistador / Responsável</Label>
-              <Select value={interviewer} onValueChange={setInterviewer}>
+              <Select value={interviewerId} onValueChange={setInterviewerId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o trabalhador" />
                 </SelectTrigger>
               <SelectContent>
                   {workers.map((w) => (
-                    <SelectItem key={w.id} value={w.full_name}>
+                    <SelectItem key={w.id} value={w.id}>
                       {w.full_name}
                     </SelectItem>
                   ))}
