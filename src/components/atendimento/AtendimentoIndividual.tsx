@@ -47,7 +47,9 @@ export default function AtendimentoIndividual() {
   const [form, setForm] = useState({ visitor_name: "", phone: "", symptom: "", referral: "", observations: "" });
 
   const { data: records = [], isLoading } = useAssistanceRecords();
-  const { data: individualTypes = [] } = useServiceTypes(true, "individual");
+  const { data: individualTypes = [] } = useServiceTypes(true, "individual", 2);
+  const sortedTypes = [...individualTypes].sort((a, b) => a.name.localeCompare(b.name));
+  const defaultReferral = sortedTypes.length > 0 ? sortedTypes[0].name : "";
   const createRecord = useCreateAssistanceRecord();
   const { toast } = useToast();
 
@@ -107,7 +109,10 @@ export default function AtendimentoIndividual() {
           <h2 className="text-xl font-semibold text-foreground">Solicitações Individuais</h2>
           <p className="text-sm text-muted-foreground">Acompanhamento individual de atendimentos</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (open) setForm((f) => ({ ...f, referral: f.referral || defaultReferral }));
+        }}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />Nova Solicitação</Button>
           </DialogTrigger>
@@ -133,7 +138,7 @@ export default function AtendimentoIndividual() {
                 <Select value={form.referral} onValueChange={(v) => setForm({ ...form, referral: v })}>
                   <SelectTrigger><SelectValue placeholder="Selecione o tipo de atendimento" /></SelectTrigger>
                   <SelectContent>
-                    {individualTypes.map((t) => (
+                    {sortedTypes.map((t) => (
                       <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>
