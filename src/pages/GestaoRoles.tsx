@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Shield, Loader2, Users, Settings2 } from "lucide-react";
+import { Search, Shield, Loader2, Users, Settings2, KeyRound } from "lucide-react";
 import { useUsersWithRoles, useUpdateUserRole } from "@/hooks/useUserRoles";
 import { useToast } from "@/hooks/use-toast";
 import ServiceTypesTab from "@/components/atendimento/ServiceTypesTab";
+import UserPermissionsTab from "@/components/permissions/UserPermissionsTab";
 
 const ROLES = [
   { value: "admin", label: "Admin" },
@@ -73,6 +74,10 @@ export default function GestaoRoles() {
           <TabsTrigger value="tipos" className="gap-2">
             <Settings2 className="h-4 w-4" />
             <span className="hidden sm:inline">Tipos de Atendimento</span>
+          </TabsTrigger>
+          <TabsTrigger value="permissoes" className="gap-2">
+            <KeyRound className="h-4 w-4" />
+            <span className="hidden sm:inline">Permissões</span>
           </TabsTrigger>
         </TabsList>
 
@@ -166,6 +171,10 @@ export default function GestaoRoles() {
 
         <TabsContent value="tipos" className="mt-6">
           <ServiceTypesTab />
+        </TabsContent>
+
+        <TabsContent value="permissoes" className="mt-6">
+          <UserPermissionsTab />
         </TabsContent>
       </Tabs>
     </div>
