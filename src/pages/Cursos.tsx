@@ -7,11 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2 } from "lucide-react";
+import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2, UserPlus } from "lucide-react";
 import { useCourses, useCourseStudentCounts, useWorkers, useCreateCourse } from "@/hooks/useCourses";
 import { toast } from "sonner";
 import type { CourseInsert, Course } from "@/hooks/useCourses";
 import { CourseStudentsDialog } from "@/components/CourseStudentsDialog";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useEnrollStudent, useCourseStudents } from "@/hooks/useCourseStudents";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const statusVariant: Record<string, string> = {
   Ativo: "bg-primary/10 text-primary border-primary/20",
@@ -33,14 +38,68 @@ const graduationLabels: Record<string, string> = {
 };
 
 export default function Cursos() {
-  const { data: courses, isLoading } = useCourses();
+  const { role, isAdminOrDiretor } = useCurrentUserRole();
+  const { user } = useAuth();
+  const isAluno = role === "aluno";
+
+  const { data: courses, isLoading } = useCourses(isAluno ? 1 : undefined);
   const { data: studentCounts } = useCourseStudentCounts();
   const { data: workers } = useWorkers();
   const createCourse = useCreateCourse();
+  const enrollStudent = useEnrollStudent();
   const [open, setOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<(Course & { status?: string; alunos?: number }) | null>(null);
-
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<CourseInsert>>({});
+
+  // Get the member record for the current user (by email match)
+  const { data: myMember } = useQuery({
+    queryKey: ["my-member", user?.email],
+    enabled: isAluno && !!user?.email,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("members")
+        .select("id")
+        .eq("email", user!.email!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get courses the student is already enrolled in
+  const { data: myEnrollments } = useQuery({
+    queryKey: ["my-enrollments", myMember?.id],
+    enabled: isAluno && !!myMember?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_students")
+        .select("course_id")
+        .eq("member_id", myMember!.id);
+      if (error) throw error;
+      return new Set(data.map((d) => d.course_id));
+    },
+  });
+
+  const handleEnroll = async (courseId: string) => {
+    if (!myMember?.id) {
+      toast.error("Seu cadastro de membro não foi encontrado. Verifique se seu e-mail está correto.");
+      return;
+    }
+    setEnrollingCourseId(courseId);
+    try {
+      await enrollStudent.mutateAsync({ courseId, memberId: myMember.id });
+      toast.success("Matrícula realizada com sucesso!");
+    } catch (e: any) {
+      if (e.message?.includes("duplicate")) {
+        toast.error("Você já está matriculado neste curso.");
+      } else {
+        toast.error(e.message || "Erro ao realizar matrícula");
+      }
+    } finally {
+      setEnrollingCourseId(null);
+    }
+  };
 
   const handleCreate = async () => {
     if (!form.name) {
@@ -93,8 +152,11 @@ export default function Cursos() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">Cursos</h1>
-          <p className="text-muted-foreground">Gestão de cursos e turmas</p>
+          <p className="text-muted-foreground">
+            {isAluno ? "Selecione um curso para se matricular" : "Gestão de cursos e turmas"}
+          </p>
         </div>
+        {!isAluno && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" />Novo Curso</Button>
@@ -226,8 +288,10 @@ export default function Cursos() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
+      {!isAluno && (
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
@@ -257,19 +321,31 @@ export default function Cursos() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {coursesWithStatus.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium text-foreground">Nenhum curso cadastrado</p>
-            <p className="text-sm text-muted-foreground">Clique em "Novo Curso" para começar</p>
+            <p className="text-lg font-medium text-foreground">
+              {isAluno ? "Nenhum curso disponível no momento" : "Nenhum curso cadastrado"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {isAluno ? "Aguarde a abertura de novos cursos" : 'Clique em "Novo Curso" para começar'}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {coursesWithStatus.map((curso) => (
-            <Card key={curso.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCourse(curso)}>
+          {coursesWithStatus.map((curso) => {
+            const isEnrolled = myEnrollments?.has(curso.id);
+            const isEnrolling = enrollingCourseId === curso.id;
+            return (
+            <Card
+              key={curso.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => !isAluno && setSelectedCourse(curso)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{curso.name}</CardTitle>
@@ -277,7 +353,7 @@ export default function Cursos() {
                 </div>
                 <CardDescription className="line-clamp-2">{curso.description || "Sem descrição"}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span>{curso.alunos} alunos</span>
@@ -288,19 +364,38 @@ export default function Cursos() {
                     <span>{curso.weekday}{curso.start_time ? ` às ${curso.start_time}` : ""}</span>
                   </div>
                 )}
-                {curso.graduation_role && (
+                {!isAluno && curso.graduation_role && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <GraduationCap className="h-4 w-4" />
                     <span>Gradua para: {graduationLabels[curso.graduation_role] || curso.graduation_role}</span>
                   </div>
                 )}
+                {isAluno && curso.status === "Ativo" && (
+                  <Button
+                    className="w-full"
+                    variant={isEnrolled ? "outline" : "default"}
+                    disabled={isEnrolled || isEnrolling}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEnroll(curso.id);
+                    }}
+                  >
+                    {isEnrolling ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="mr-2 h-4 w-4" />
+                    )}
+                    {isEnrolled ? "Já matriculado" : "Matricular-se"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {selectedCourse && (
+      {selectedCourse && !isAluno && (
         <CourseStudentsDialog
           course={selectedCourse}
           open={!!selectedCourse}
