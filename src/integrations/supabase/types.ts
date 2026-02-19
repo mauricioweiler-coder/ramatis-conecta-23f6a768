@@ -144,6 +144,7 @@ export type Database = {
           member_id: string | null
           member_name: string | null
           notes: string | null
+          spiritual_session_id: string | null
         }
         Insert: {
           activity_type: string
@@ -152,6 +153,7 @@ export type Database = {
           member_id?: string | null
           member_name?: string | null
           notes?: string | null
+          spiritual_session_id?: string | null
         }
         Update: {
           activity_type?: string
@@ -160,6 +162,7 @@ export type Database = {
           member_id?: string | null
           member_name?: string | null
           notes?: string | null
+          spiritual_session_id?: string | null
         }
         Relationships: [
           {
@@ -167,6 +170,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_spiritual_session_id_fkey"
+            columns: ["spiritual_session_id"]
+            isOneToOne: false
+            referencedRelation: "spiritual_sessions"
             referencedColumns: ["id"]
           },
         ]

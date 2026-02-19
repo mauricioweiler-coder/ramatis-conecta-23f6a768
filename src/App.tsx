@@ -21,6 +21,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Matricula from "./pages/Matricula";
 import CursoDetalhe from "./pages/CursoDetalhe";
+import RegistroPresenca from "./pages/RegistroPresenca";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/matricula" element={<Matricula />} />
+            <Route path="/registro-presenca" element={<RegistroPresenca />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               element={
