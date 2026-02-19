@@ -18,16 +18,30 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method === "GET") {
-      // Fetch from profiles table where photos are actually stored
+      // Fetch only workers (users with 'trabalhador' role) who have photos
+      const { data: workerRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "trabalhador");
+
+      if (rolesError) throw rolesError;
+
+      const workerIds = (workerRoles || []).map((r: any) => r.user_id);
+
+      if (workerIds.length === 0) {
+        return new Response(JSON.stringify([]), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, profile_photo_url")
-        .not("profile_photo_url", "is", null)
-        .eq("profile_completed", true);
+        .in("id", workerIds)
+        .not("profile_photo_url", "is", null);
 
       if (error) throw error;
 
-      // Map to expected Worker interface (id, full_name, profile_photo_url)
       const workers = (data || []).map((p: any) => ({
         id: p.id,
         full_name: p.full_name || "Sem nome",
