@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, UserCheck, GraduationCap, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { Search, Users, UserCheck, GraduationCap, Loader2, AlertTriangle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
@@ -26,6 +32,8 @@ const roleColor: Record<string, string> = {
   ALUNO: "bg-muted text-muted-foreground border-border",
 };
 
+const INACTIVE_DAYS = 90;
+
 function useProfilesList() {
   return useQuery({
     queryKey: ["profiles-colaboradores"],
@@ -40,24 +48,127 @@ function useProfilesList() {
   });
 }
 
+function useLastAttendance() {
+  return useQuery({
+    queryKey: ["last-attendance-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("member_id, date")
+        .order("date", { ascending: false });
+      if (error) throw error;
+      // Build map: member_id -> latest date
+      const map: Record<string, string> = {};
+      for (const row of data || []) {
+        if (row.member_id && !map[row.member_id]) {
+          map[row.member_id] = row.date;
+        }
+      }
+      return map;
+    },
+  });
+}
+
+function useWorkersStatus() {
+  return useQuery({
+    queryKey: ["workers-status-map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workers")
+        .select("id, status");
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const w of data || []) {
+        map[w.id] = w.status || "ATIVO";
+      }
+      return map;
+    },
+  });
+}
+
+function useToggleWorkerStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ workerId, newStatus }: { workerId: string; newStatus: string }) => {
+      const { error } = await supabase
+        .from("workers")
+        .update({ status: newStatus })
+        .eq("id", workerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workers-status-map"] });
+      queryClient.invalidateQueries({ queryKey: ["workers-list"] });
+    },
+  });
+}
+
 export default function Colaboradores() {
-  const { data: profiles, isLoading } = useProfilesList();
+  const { data: profiles, isLoading: profilesLoading } = useProfilesList();
+  const { data: lastAttendanceMap = {}, isLoading: attendanceLoading } = useLastAttendance();
+  const { data: workersStatusMap = {}, isLoading: workersLoading } = useWorkersStatus();
+  const { isAdminOrDiretor } = useCurrentUserRole();
+  const toggleStatus = useToggleWorkerStatus();
+  const { toast } = useToast();
+
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterInactive, setFilterInactive] = useState<string>("all");
 
-  // Separate colaboradores (non-ALUNO) and alunos
+  const isLoading = profilesLoading || attendanceLoading || workersLoading;
+
   const colaboradores = (profiles || []).filter((p) => p.role !== "ALUNO");
   const alunos = (profiles || []).filter((p) => p.role === "ALUNO");
 
-  const filtered = colaboradores.filter((p) => {
+  const now = new Date();
+
+  const enriched = useMemo(() => {
+    return colaboradores.map((p) => {
+      const lastDate = lastAttendanceMap[p.id];
+      const daysSinceAttendance = lastDate
+        ? Math.floor((now.getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+      const isInactive90 = daysSinceAttendance === null || daysSinceAttendance >= INACTIVE_DAYS;
+      const workerStatus = workersStatusMap[p.id] || null;
+      return { ...p, lastDate, daysSinceAttendance, isInactive90, workerStatus };
+    });
+  }, [colaboradores, lastAttendanceMap, workersStatusMap]);
+
+  const filtered = enriched.filter((p) => {
     const matchSearch =
       (p.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (p.email || "").toLowerCase().includes(search.toLowerCase());
     const matchRole = filterRole === "all" || p.role === filterRole;
-    return matchSearch && matchRole;
+    const matchInactive =
+      filterInactive === "all" ||
+      (filterInactive === "inactive" && p.isInactive90) ||
+      (filterInactive === "active" && !p.isInactive90);
+    return matchSearch && matchRole && matchInactive;
+  });
+
+  // Sort: inactive 90+ days first
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.isInactive90 && !b.isInactive90) return -1;
+    if (!a.isInactive90 && b.isInactive90) return 1;
+    // Within same group, sort by days since attendance desc (most inactive first)
+    const aDays = a.daysSinceAttendance ?? 9999;
+    const bDays = b.daysSinceAttendance ?? 9999;
+    return bDays - aDays;
   });
 
   const uniqueRoles = [...new Set(colaboradores.map((p) => p.role).filter(Boolean))];
+  const inactiveCount = enriched.filter((p) => p.isInactive90).length;
+
+  const handleToggleStatus = (profileId: string, currentStatus: string | null) => {
+    const newStatus = currentStatus === "ATIVO" ? "INATIVO" : "ATIVO";
+    toggleStatus.mutate(
+      { workerId: profileId, newStatus },
+      {
+        onSuccess: () => toast({ title: `Status alterado para ${newStatus}` }),
+        onError: (err) => toast({ title: "Erro ao alterar status", description: (err as Error).message, variant: "destructive" }),
+      }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -76,7 +187,7 @@ export default function Colaboradores() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
             <Users className="h-8 w-8 text-primary" />
@@ -92,6 +203,15 @@ export default function Colaboradores() {
             <div>
               <p className="text-2xl font-bold text-foreground">{colaboradores.length}</p>
               <p className="text-xs text-muted-foreground">Colaboradores</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <div>
+              <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
+              <p className="text-xs text-muted-foreground">Inativos (90+ dias)</p>
             </div>
           </CardContent>
         </Card>
@@ -118,12 +238,22 @@ export default function Colaboradores() {
                 <SelectValue placeholder="Filtrar papel" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">Todos os papéis</SelectItem>
                 {uniqueRoles.map((role) => (
                   <SelectItem key={role} value={role!}>
                     {roleLabels[role!] || role}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterInactive} onValueChange={setFilterInactive}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Filtrar presença" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="inactive">Inativos (90+ dias)</SelectItem>
+                <SelectItem value="active">Ativos (presença recente)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -134,26 +264,62 @@ export default function Colaboradores() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden md:table-cell">E-mail</TableHead>
-                <TableHead className="hidden lg:table-cell">Celular</TableHead>
                 <TableHead>Papel</TableHead>
+                <TableHead>Última Presença</TableHead>
+                {isAdminOrDiretor && <TableHead>Status</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium text-foreground">{p.full_name || "—"}</TableCell>
+              {sorted.map((p) => (
+                <TableRow key={p.id} className={p.isInactive90 ? "bg-destructive/5" : ""}>
+                  <TableCell className="font-medium text-foreground">
+                    <div className="flex items-center gap-2">
+                      {p.full_name || "—"}
+                      {p.isInactive90 && (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">{p.email || "—"}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">{p.mobile_phone || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={roleColor[p.role || ""] || ""}>
                       {roleLabels[p.role || ""] || p.role || "—"}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    {p.lastDate ? (
+                      <span className={p.isInactive90 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                        {formatDistanceToNow(new Date(p.lastDate), { addSuffix: true, locale: ptBR })}
+                      </span>
+                    ) : (
+                      <span className="text-destructive font-medium">Nunca registrou</span>
+                    )}
+                  </TableCell>
+                  {isAdminOrDiretor && (
+                    <TableCell>
+                      {p.workerStatus !== null ? (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={p.workerStatus === "ATIVO"}
+                            onCheckedChange={() => handleToggleStatus(p.id, p.workerStatus)}
+                            disabled={toggleStatus.isPending}
+                          />
+                          <span className={`text-xs font-medium ${p.workerStatus === "ATIVO" ? "text-primary" : "text-destructive"}`}>
+                            {p.workerStatus === "ATIVO" ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {sorted.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum colaborador encontrado</TableCell>
+                  <TableCell colSpan={isAdminOrDiretor ? 5 : 4} className="text-center text-muted-foreground py-8">
+                    Nenhum colaborador encontrado
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -161,7 +327,6 @@ export default function Colaboradores() {
         </CardContent>
       </Card>
 
-      {/* Alunos section */}
       {alunos.length > 0 && (
         <Card>
           <CardHeader>
