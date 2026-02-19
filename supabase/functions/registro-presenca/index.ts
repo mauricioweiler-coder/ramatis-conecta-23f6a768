@@ -18,15 +18,23 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method === "GET") {
+      // Fetch from profiles table where photos are actually stored
       const { data, error } = await supabase
-        .from("workers")
+        .from("profiles")
         .select("id, full_name, profile_photo_url")
-        .eq("status", "ATIVO")
-        .not("profile_photo_url", "is", null);
+        .not("profile_photo_url", "is", null)
+        .eq("profile_completed", true);
 
       if (error) throw error;
 
-      return new Response(JSON.stringify(data || []), {
+      // Map to expected Worker interface (id, full_name, profile_photo_url)
+      const workers = (data || []).map((p: any) => ({
+        id: p.id,
+        full_name: p.full_name || "Sem nome",
+        profile_photo_url: p.profile_photo_url,
+      }));
+
+      return new Response(JSON.stringify(workers), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -41,19 +49,21 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get worker info
-      const { data: worker } = await supabase
-        .from("workers")
+      // Get profile info
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("id, full_name")
         .eq("id", worker_id)
         .single();
 
-      if (!worker) {
+      if (!profile) {
         return new Response(
-          JSON.stringify({ error: "Trabalhador não encontrado" }),
+          JSON.stringify({ error: "Usuário não encontrado" }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      const workerName = profile.full_name || "Sem nome";
 
       // Check today
       const now = new Date();
@@ -72,7 +82,7 @@ Deno.serve(async (req) => {
           JSON.stringify({
             error: "Presença já registrada hoje",
             already_registered: true,
-            worker_name: worker.full_name,
+            worker_name: workerName,
           }),
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -93,7 +103,6 @@ Deno.serve(async (req) => {
             const sessionTime = new Date(`${today}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
             const diffMs = sessionTime.getTime() - now.getTime();
             const diffHours = diffMs / (1000 * 60 * 60);
-            // Up to 2 hours before, or up to 30min after start
             if (diffHours >= -0.5 && diffHours <= 2) {
               matchedSessionId = session.id;
               break;
@@ -109,7 +118,7 @@ Deno.serve(async (req) => {
         .from("attendance")
         .insert({
           member_id: worker_id,
-          member_name: worker.full_name,
+          member_name: workerName,
           activity_type: "Palestra",
           spiritual_session_id: matchedSessionId,
           notes: matchedSessionId
@@ -124,7 +133,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          worker_name: worker.full_name,
+          worker_name: workerName,
           session_linked: !!matchedSessionId,
           attendance,
         }),
