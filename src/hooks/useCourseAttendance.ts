@@ -85,6 +85,7 @@ export function useSubmitJustification() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["course-attendance"] });
       queryClient.invalidateQueries({ queryKey: ["course-attendance-member"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-justifications"] });
     },
   });
 }
@@ -102,6 +103,7 @@ export function useUpdateJustificationStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["course-attendance"] });
       queryClient.invalidateQueries({ queryKey: ["course-attendance-member"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-justifications"] });
     },
   });
 }
