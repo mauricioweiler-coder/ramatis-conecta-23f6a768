@@ -9,33 +9,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScanFace, UserCheck, Clock, Calendar, Search, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useAttendanceToday, useCreateAttendance } from "@/hooks/useAttendance";
+import { useMembers } from "@/hooks/useCourseStudents";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Presenca() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ member_name: "", activity_type: "" });
+  const [form, setForm] = useState({ member_id: "", activity_type: "" });
   const hoje = new Date().toLocaleDateString("pt-BR");
 
   const { data: records = [], isLoading } = useAttendanceToday();
   const createAttendance = useCreateAttendance();
+  const { data: members = [] } = useMembers();
   const { toast } = useToast();
 
+  const getMemberName = (p: typeof records[0]) =>
+    p.member?.name || p.member_name || "";
+
   const filtered = records.filter((p) =>
-    (p.member_name || "").toLowerCase().includes(search.toLowerCase())
+    getMemberName(p).toLowerCase().includes(search.toLowerCase())
   );
 
   const handleSubmit = () => {
-    if (!form.member_name || !form.activity_type) {
+    if (!form.member_id || !form.activity_type) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
+    const selectedMember = members.find((m) => m.id === form.member_id);
     createAttendance.mutate(
-      { member_name: form.member_name, activity_type: form.activity_type },
+      { member_id: form.member_id, member_name: selectedMember?.name || "", activity_type: form.activity_type },
       {
         onSuccess: () => {
           toast({ title: "Presença registrada!" });
-          setForm({ member_name: "", activity_type: "" });
+          setForm({ member_id: "", activity_type: "" });
           setDialogOpen(false);
         },
         onError: () => toast({ title: "Erro ao registrar", variant: "destructive" }),
@@ -69,8 +75,15 @@ export default function Presenca() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Nome *</Label>
-                <Input placeholder="Nome do colaborador" value={form.member_name} onChange={(e) => setForm({ ...form, member_name: e.target.value })} />
+                <Label>Colaborador *</Label>
+                <Select value={form.member_id} onValueChange={(v) => setForm({ ...form, member_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+                  <SelectContent>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label>Atividade *</Label>
@@ -169,7 +182,7 @@ export default function Presenca() {
               ) : (
                 filtered.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium text-foreground">{p.member_name || "—"}</TableCell>
+                    <TableCell className="font-medium text-foreground">{getMemberName(p) || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />

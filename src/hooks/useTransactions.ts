@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
-export type Transaction = Tables<"transactions">;
+export type Transaction = Tables<"transactions"> & {
+  responsible_worker?: { id: string; full_name: string } | null;
+};
 export type TransactionInsert = TablesInsert<"transactions">;
 
 export function useTransactions() {
@@ -11,10 +13,10 @@ export function useTransactions() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-        .select("*")
+        .select("*, responsible_worker:workers!transactions_responsible_id_fkey(id, full_name)")
         .order("date", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as Transaction[];
     },
   });
 }

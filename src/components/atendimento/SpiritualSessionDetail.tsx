@@ -11,6 +11,7 @@ import { Loader2, Calendar, Clock, Users, Trash2, Plus, Lock, Mic } from "lucide
 import type { SpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useUpdateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
+import { useWorkers } from "@/hooks/useCourses";
 import { useToast } from "@/hooks/use-toast";
 
 interface ServiceEntry {
@@ -27,21 +28,22 @@ interface Props {
 export default function SpiritualSessionDetail({ session, open, onOpenChange }: Props) {
   const [sessionDate, setSessionDate] = useState("");
   const [startTime, setStartTime] = useState("");
-  const [responsible, setResponsible] = useState("");
-  const [speaker, setSpeaker] = useState("");
+  const [responsibleId, setResponsibleId] = useState("");
+  const [speakerId, setSpeakerId] = useState("");
   const [observations, setObservations] = useState("");
   const [services, setServices] = useState<ServiceEntry[]>([]);
 
   const update = useUpdateSpiritualSession();
   const { data: serviceTypes = [] } = useServiceTypes(true, "coletivo");
+  const { data: workers = [] } = useWorkers();
   const { toast } = useToast();
 
   useEffect(() => {
     if (session) {
       setSessionDate(session.session_date);
       setStartTime(session.start_time || "");
-      setResponsible(session.responsible_name || "");
-      setSpeaker(session.speaker_name || "");
+      setResponsibleId(session.responsible_id || "");
+      setSpeakerId(session.speaker_id || "");
       setObservations(session.observations || "");
       setServices(
         session.session_services.map((ss) => ({
@@ -63,6 +65,8 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
   if (!session) return null;
 
   const totalPeople = services.reduce((sum, s) => sum + s.people_count, 0);
+  const responsibleName = session.responsible_worker?.full_name || session.responsible_name || "";
+  const speakerName = session.speaker_worker?.full_name || session.speaker_name || "";
 
   const addService = () => setServices([...services, { service_type_id: "", people_count: 0 }]);
   const removeService = (idx: number) => setServices(services.filter((_, i) => i !== idx));
@@ -83,8 +87,8 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
         id: session.id,
         session_date: sessionDate,
         start_time: startTime || undefined,
-        responsible_name: responsible || undefined,
-        speaker_name: speaker || undefined,
+        responsible_id: responsibleId || undefined,
+        speaker_id: speakerId || undefined,
         observations: observations || undefined,
         services: validServices,
       },
@@ -115,7 +119,6 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Summary header */}
           <div className="rounded-lg border border-border bg-muted/30 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -132,7 +135,6 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
 
           <Separator />
 
-          {/* Fields */}
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -147,12 +149,18 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
 
             <div className="grid gap-2">
               <Label>Dirigente / Responsável</Label>
-              <Input
-                placeholder="Nome do responsável"
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-                disabled={!editable}
-              />
+              {editable ? (
+                <Select value={responsibleId} onValueChange={setResponsibleId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o responsável" /></SelectTrigger>
+                  <SelectContent>
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={responsibleName || "—"} disabled />
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -160,12 +168,18 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
                 <Mic className="h-3.5 w-3.5" />
                 Palestrante
               </Label>
-              <Input
-                placeholder="Nome do palestrante"
-                value={speaker}
-                onChange={(e) => setSpeaker(e.target.value)}
-                disabled={!editable}
-              />
+              {editable ? (
+                <Select value={speakerId} onValueChange={setSpeakerId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o palestrante" /></SelectTrigger>
+                  <SelectContent>
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={speakerName || "—"} disabled />
+              )}
             </div>
 
             <div className="space-y-3">

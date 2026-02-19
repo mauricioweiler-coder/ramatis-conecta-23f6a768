@@ -14,9 +14,14 @@ export interface SpiritualSession {
   start_time: string | null;
   responsible_name: string | null;
   speaker_name: string | null;
+  responsible_id: string | null;
+  speaker_id: string | null;
   observations: string | null;
   created_at: string;
   session_services: SessionService[];
+  // Joined worker data
+  responsible_worker?: { id: string; full_name: string } | null;
+  speaker_worker?: { id: string; full_name: string } | null;
 }
 
 export function useSpiritualSessions() {
@@ -25,10 +30,9 @@ export function useSpiritualSessions() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("spiritual_sessions")
-        .select("*, session_services(*, service_types(id, name))")
+        .select("*, session_services(*, service_types(id, name)), responsible_worker:workers!spiritual_sessions_responsible_id_fkey(id, full_name), speaker_worker:workers!spiritual_sessions_speaker_id_fkey(id, full_name)")
         .order("session_date", { ascending: false });
       if (error) throw error;
-      // flatten nested service_types
       return (data as any[]).map((s) => ({
         ...s,
         session_services: (s.session_services || []).map((ss: any) => ({
@@ -43,8 +47,8 @@ export function useSpiritualSessions() {
 export interface CreateSessionInput {
   session_date: string;
   start_time?: string;
-  responsible_name?: string;
-  speaker_name?: string;
+  responsible_id?: string;
+  speaker_id?: string;
   observations?: string;
   services: { service_type_id: string; people_count: number }[];
 }
@@ -58,8 +62,8 @@ export function useCreateSpiritualSession() {
         .insert({
           session_date: input.session_date,
           start_time: input.start_time || null,
-          responsible_name: input.responsible_name || null,
-          speaker_name: input.speaker_name || null,
+          responsible_id: input.responsible_id || null,
+          speaker_id: input.speaker_id || null,
           observations: input.observations || null,
         })
         .select()
@@ -88,8 +92,8 @@ export interface UpdateSessionInput {
   id: string;
   session_date?: string;
   start_time?: string;
-  responsible_name?: string;
-  speaker_name?: string;
+  responsible_id?: string;
+  speaker_id?: string;
   observations?: string;
   services: { service_type_id: string; people_count: number }[];
 }
@@ -102,16 +106,15 @@ export function useUpdateSpiritualSession() {
       const { error } = await supabase
         .from("spiritual_sessions")
         .update({
-          ...updates,
+          session_date: updates.session_date,
           start_time: updates.start_time || null,
-          responsible_name: updates.responsible_name || null,
-          speaker_name: updates.speaker_name || null,
+          responsible_id: updates.responsible_id || null,
+          speaker_id: updates.speaker_id || null,
           observations: updates.observations || null,
         })
         .eq("id", id);
       if (error) throw error;
 
-      // Replace services: delete old, insert new
       const { error: delErr } = await supabase
         .from("session_services")
         .delete()

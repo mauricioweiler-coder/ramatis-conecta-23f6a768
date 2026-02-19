@@ -589,8 +589,10 @@ export type Database = {
           created_at: string
           id: string
           observations: string | null
+          responsible_id: string | null
           responsible_name: string | null
           session_date: string
+          speaker_id: string | null
           speaker_name: string | null
           start_time: string | null
           updated_at: string
@@ -599,8 +601,10 @@ export type Database = {
           created_at?: string
           id?: string
           observations?: string | null
+          responsible_id?: string | null
           responsible_name?: string | null
           session_date: string
+          speaker_id?: string | null
           speaker_name?: string | null
           start_time?: string | null
           updated_at?: string
@@ -609,13 +613,30 @@ export type Database = {
           created_at?: string
           id?: string
           observations?: string | null
+          responsible_id?: string | null
           responsible_name?: string | null
           session_date?: string
+          speaker_id?: string | null
           speaker_name?: string | null
           start_time?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "spiritual_sessions_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spiritual_sessions_speaker_id_fkey"
+            columns: ["speaker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
@@ -626,6 +647,7 @@ export type Database = {
           description: string
           id: string
           related_monthly_fee_id: string | null
+          responsible_id: string | null
           responsible_name: string | null
           type: string
         }
@@ -637,6 +659,7 @@ export type Database = {
           description: string
           id?: string
           related_monthly_fee_id?: string | null
+          responsible_id?: string | null
           responsible_name?: string | null
           type: string
         }
@@ -648,6 +671,7 @@ export type Database = {
           description?: string
           id?: string
           related_monthly_fee_id?: string | null
+          responsible_id?: string | null
           responsible_name?: string | null
           type?: string
         }
@@ -657,6 +681,13 @@ export type Database = {
             columns: ["related_monthly_fee_id"]
             isOneToOne: false
             referencedRelation: "monthly_fees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
             referencedColumns: ["id"]
           },
         ]
