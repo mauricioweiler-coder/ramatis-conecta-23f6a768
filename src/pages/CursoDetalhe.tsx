@@ -13,12 +13,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import {
   ArrowLeft, Plus, BookOpen, Users, Loader2, Save, Trash2, FileText,
   Link as LinkIcon, Type, Upload, Download, ExternalLink, CalendarDays, GripVertical,
+  Check, X, MessageSquare,
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useCourseStudents } from "@/hooks/useCourseStudents";
 import { useCourseLessons, useCreateLesson, useUpdateLesson, useDeleteLesson, useLessonMaterials, useAddMaterial, useDeleteMaterial, uploadCourseMaterial } from "@/hooks/useCourseLessons";
-import { useCourseAttendance, useSaveCourseAttendance } from "@/hooks/useCourseAttendance";
+import { useCourseAttendance, useSaveCourseAttendance, useCourseAttendanceByMember, useSubmitJustification, useUpdateJustificationStatus } from "@/hooks/useCourseAttendance";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { toast } from "sonner";
 import type { CourseLesson } from "@/hooks/useCourseLessons";
@@ -43,6 +46,21 @@ export default function CursoDetalhe() {
   const { data: lessons = [], isLoading: loadingLessons } = useCourseLessons(id || null);
   const { data: students = [] } = useCourseStudents(id || null);
   const activeStudents = students.filter((s: any) => s.status === "ATIVO");
+
+  // Get current user's member_id (for student view)
+  const { data: myMember } = useQuery({
+    queryKey: ["my-member", user?.email],
+    enabled: !!user?.email,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("members")
+        .select("id")
+        .eq("email", user!.email!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
   const [newLessonOpen, setNewLessonOpen] = useState(false);
@@ -194,6 +212,8 @@ export default function CursoDetalhe() {
           lesson={selectedLesson}
           courseId={course.id}
           canManage={canManage}
+          isAluno={isAluno}
+          myMemberId={myMember?.id || null}
           activeStudents={activeStudents}
           open={!!selectedLesson}
           onOpenChange={(o) => !o && setSelectedLesson(null)}
@@ -262,10 +282,12 @@ function NewLessonDialog({ courseId, lessonCount, open, onOpenChange }: {
 }
 
 // --- Lesson Detail Dialog ---
-function LessonDetailDialog({ lesson, courseId, canManage, activeStudents, open, onOpenChange }: {
+function LessonDetailDialog({ lesson, courseId, canManage, isAluno, myMemberId, activeStudents, open, onOpenChange }: {
   lesson: CourseLesson;
   courseId: string;
   canManage: boolean;
+  isAluno: boolean;
+  myMemberId: string | null;
   activeStudents: any[];
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -296,26 +318,30 @@ function LessonDetailDialog({ lesson, courseId, canManage, activeStudents, open,
             <TabsTrigger value="materiais">
               <FileText className="mr-1 h-4 w-4" /> Materiais
             </TabsTrigger>
-            {canManage && (
-              <TabsTrigger value="presenca">
-                <CalendarDays className="mr-1 h-4 w-4" /> Presença
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="presenca">
+              <CalendarDays className="mr-1 h-4 w-4" /> Presença
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="materiais" className="flex-1 overflow-y-auto">
             <MaterialsSection lessonId={lesson.id} courseId={courseId} canManage={canManage} />
           </TabsContent>
 
-          {canManage && (
-            <TabsContent value="presenca" className="flex-1 overflow-y-auto">
+          <TabsContent value="presenca" className="flex-1 overflow-y-auto">
+            {canManage ? (
               <AttendanceSection
                 courseId={courseId}
                 lessonDate={lesson.lesson_date || new Date().toISOString().slice(0, 10)}
                 activeStudents={activeStudents}
               />
-            </TabsContent>
-          )}
+            ) : (
+              <StudentAttendanceSection
+                courseId={courseId}
+                lessonDate={lesson.lesson_date || new Date().toISOString().slice(0, 10)}
+                myMemberId={myMemberId}
+              />
+            )}
+          </TabsContent>
         </Tabs>
 
         {canManage && (
@@ -519,17 +545,17 @@ function MaterialsSection({ lessonId, courseId, canManage }: { lessonId: string;
   );
 }
 
-// --- Attendance Section (inside lesson) ---
+// --- Attendance Section (teacher view inside lesson) ---
 function AttendanceSection({ courseId, lessonDate, activeStudents }: {
   courseId: string; lessonDate: string; activeStudents: any[];
 }) {
   const { data: attendance = [], isLoading } = useCourseAttendance(courseId, lessonDate);
   const saveAttendance = useSaveCourseAttendance();
+  const updateJustStatus = useUpdateJustificationStatus();
 
   const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>({});
   const [initialized, setInitialized] = useState(false);
 
-  // Initialize from loaded data
   if (!initialized && !isLoading) {
     const map: Record<string, boolean> = {};
     activeStudents.forEach((s: any) => {
@@ -551,6 +577,15 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
       toast.success("Presença salva!");
     } catch (e: any) {
       toast.error(e.message || "Erro ao salvar presença");
+    }
+  };
+
+  const handleJustification = async (attendanceId: string, status: "ACEITA" | "REJEITADA") => {
+    try {
+      await updateJustStatus.mutateAsync({ attendanceId, status });
+      toast.success(status === "ACEITA" ? "Justificativa aceita!" : "Justificativa rejeitada.");
+    } catch (e: any) {
+      toast.error(e.message || "Erro");
     }
   };
 
@@ -578,21 +613,159 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
           <TableRow>
             <TableHead className="w-12">✓</TableHead>
             <TableHead>Aluno</TableHead>
+            <TableHead>Justificativa</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {activeStudents.map((s: any) => (
-            <TableRow key={s.member_id} className="cursor-pointer" onClick={() => togglePresence(s.member_id)}>
-              <TableCell>
-                <Checkbox checked={presenceMap[s.member_id] ?? true} onCheckedChange={() => togglePresence(s.member_id)} />
-              </TableCell>
-              <TableCell>
-                <p className="font-medium text-foreground">{s.members?.name || "—"}</p>
-              </TableCell>
-            </TableRow>
-          ))}
+          {activeStudents.map((s: any) => {
+            const record = attendance.find((a: any) => a.member_id === s.member_id);
+            const hasJustification = record?.justification && record?.justification_status;
+            return (
+              <TableRow key={s.member_id}>
+                <TableCell className="cursor-pointer" onClick={() => togglePresence(s.member_id)}>
+                  <Checkbox checked={presenceMap[s.member_id] ?? true} onCheckedChange={() => togglePresence(s.member_id)} />
+                </TableCell>
+                <TableCell className="cursor-pointer" onClick={() => togglePresence(s.member_id)}>
+                  <p className="font-medium text-foreground">{s.members?.name || "—"}</p>
+                </TableCell>
+                <TableCell>
+                  {hasJustification ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground line-clamp-2">{record.justification}</p>
+                      {record.justification_status === "PENDENTE" ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleJustification(record.id, "ACEITA")}>
+                            <Check className="mr-1 h-3 w-3" /> Aceitar
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleJustification(record.id, "REJEITADA")}>
+                            <X className="mr-1 h-3 w-3" /> Rejeitar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Badge variant={record.justification_status === "ACEITA" ? "default" : "destructive"} className="text-xs">
+                          {record.justification_status === "ACEITA" ? "Aceita" : "Rejeitada"}
+                        </Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+// --- Student Attendance Section (student view) ---
+function StudentAttendanceSection({ courseId, lessonDate, myMemberId }: {
+  courseId: string; lessonDate: string; myMemberId: string | null;
+}) {
+  const { data: attendance = [], isLoading } = useCourseAttendance(courseId, lessonDate);
+  const submitJustification = useSubmitJustification();
+  const [justText, setJustText] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  if (!myMemberId) {
+    return <p className="text-center text-muted-foreground py-6">Seu cadastro de membro não foi encontrado.</p>;
+  }
+
+  if (isLoading) {
+    return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+  }
+
+  const myRecord = attendance.find((a: any) => a.member_id === myMemberId);
+
+  if (!myRecord) {
+    return <p className="text-center text-muted-foreground py-6">Presença ainda não registrada para esta aula.</p>;
+  }
+
+  const handleSubmit = async () => {
+    if (!justText.trim()) { toast.error("Escreva sua justificativa"); return; }
+    try {
+      await submitJustification.mutateAsync({ attendanceId: myRecord.id, justification: justText.trim() });
+      toast.success("Justificativa enviada!");
+      setShowForm(false);
+      setJustText("");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao enviar justificativa");
+    }
+  };
+
+  return (
+    <div className="space-y-4 py-2">
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center justify-center h-10 w-10 rounded-full ${myRecord.present ? "bg-primary/10" : "bg-destructive/10"}`}>
+              {myRecord.present ? (
+                <Check className="h-5 w-5 text-primary" />
+              ) : (
+                <X className="h-5 w-5 text-destructive" />
+              )}
+            </div>
+            <div>
+              <p className="font-medium text-foreground">
+                {myRecord.present ? "Presente" : "Ausente"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {new Date(lessonDate + "T12:00:00").toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+          </div>
+
+          {/* Show justification status if exists */}
+          {myRecord.justification && (
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Sua justificativa</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{myRecord.justification}</p>
+              {myRecord.justification_status && (
+                <Badge variant={
+                  myRecord.justification_status === "ACEITA" ? "default" :
+                  myRecord.justification_status === "REJEITADA" ? "destructive" : "secondary"
+                }>
+                  {myRecord.justification_status === "ACEITA" ? "Aceita" :
+                   myRecord.justification_status === "REJEITADA" ? "Rejeitada" : "Pendente"}
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Allow justification only when absent and no justification yet */}
+          {!myRecord.present && !myRecord.justification && !showForm && (
+            <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
+              <MessageSquare className="mr-1 h-3 w-3" /> Enviar Justificativa
+            </Button>
+          )}
+
+          {showForm && (
+            <div className="border-t pt-3 space-y-3">
+              <Label>Justificativa da ausência</Label>
+              <Textarea
+                placeholder="Explique o motivo da sua ausência..."
+                value={justText}
+                onChange={(e) => setJustText(e.target.value)}
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSubmit} disabled={submitJustification.isPending}>
+                  {submitJustification.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                  Enviar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); setJustText(""); }}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
