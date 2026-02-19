@@ -69,15 +69,14 @@ export function useProfessorWorkers() {
       const professorUserIds = professorRoles.map((r) => r.user_id);
       if (professorUserIds.length === 0) return [];
 
-      // Workers table id = user_id for synced workers
+      // Query profiles table (workers table only has 'trabalhador' role users)
       const { data, error } = await supabase
-        .from("workers")
+        .from("profiles")
         .select("id, full_name")
-        .eq("status", "ATIVO")
         .in("id", professorUserIds)
         .order("full_name");
       if (error) throw error;
-      return data;
+      return data?.filter((p) => p.full_name) || [];
     },
   });
 }
