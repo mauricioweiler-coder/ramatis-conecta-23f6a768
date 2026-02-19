@@ -55,6 +55,33 @@ export function useWorkers() {
   });
 }
 
+export function useProfessorWorkers() {
+  return useQuery({
+    queryKey: ["professor-workers"],
+    queryFn: async () => {
+      // Get user_ids with professor role
+      const { data: professorRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "professor");
+      if (rolesError) throw rolesError;
+
+      const professorUserIds = professorRoles.map((r) => r.user_id);
+      if (professorUserIds.length === 0) return [];
+
+      // Workers table id = user_id for synced workers
+      const { data, error } = await supabase
+        .from("workers")
+        .select("id, full_name")
+        .eq("status", "ATIVO")
+        .in("id", professorUserIds)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useCreateCourse() {
   const queryClient = useQueryClient();
   return useMutation({

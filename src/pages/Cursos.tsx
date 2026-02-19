@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2, UserPlus, Pencil, ClipboardList } from "lucide-react";
-import { useCourses, useCourseStudentCounts, useWorkers, useCreateCourse } from "@/hooks/useCourses";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCourses, useCourseStudentCounts, useWorkers, useProfessorWorkers, useCreateCourse } from "@/hooks/useCourses";
 import { toast } from "sonner";
 import type { CourseInsert, Course } from "@/hooks/useCourses";
 import { CourseStudentsDialog } from "@/components/CourseStudentsDialog";
@@ -47,6 +48,7 @@ export default function Cursos() {
   const { data: courses, isLoading } = useCourses(isAluno ? 1 : undefined);
   const { data: studentCounts } = useCourseStudentCounts();
   const { data: workers } = useWorkers();
+  const { data: professorWorkers } = useProfessorWorkers();
   const createCourse = useCreateCourse();
   const enrollStudent = useEnrollStudent();
 
@@ -56,7 +58,7 @@ export default function Cursos() {
   const [attendanceCourse, setAttendanceCourse] = useState<Course | null>(null);
   const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [form, setForm] = useState<Partial<CourseInsert>>({ level: 1 });
+  const [form, setForm] = useState<Partial<CourseInsert> & { assistant_ids?: string[] }>({ level: 1, assistant_ids: [] });
 
   // Aluno: get member record
   const { data: myMember } = useQuery({
@@ -110,6 +112,7 @@ export default function Cursos() {
         description: form.description,
         coordinator_id: form.coordinator_id,
         main_teacher_id: form.main_teacher_id,
+        assistant_ids: form.assistant_ids && form.assistant_ids.length > 0 ? form.assistant_ids : null,
         weekday: form.weekday,
         start_date: form.start_date,
         end_date: form.end_date,
@@ -120,7 +123,7 @@ export default function Cursos() {
         level: form.level || 1,
       });
       toast.success("Curso criado com sucesso!");
-      setForm({ level: 1 });
+      setForm({ level: 1, assistant_ids: [] });
       setOpen(false);
     } catch (e: any) {
       toast.error(e.message || "Erro ao criar curso");
@@ -204,7 +207,7 @@ export default function Cursos() {
                     <Select value={form.coordinator_id || ""} onValueChange={(v) => setForm({ ...form, coordinator_id: v })}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        {(workers || []).map((w) => (<SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>))}
+                        {(professorWorkers || []).map((w) => (<SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -213,9 +216,32 @@ export default function Cursos() {
                     <Select value={form.main_teacher_id || ""} onValueChange={(v) => setForm({ ...form, main_teacher_id: v })}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        {(workers || []).map((w) => (<SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>))}
+                        {(professorWorkers || []).map((w) => (<SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Auxiliares</Label>
+                  <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
+                    {(workers || []).length === 0 && (
+                      <p className="text-sm text-muted-foreground">Nenhum trabalhador disponível</p>
+                    )}
+                    {(workers || []).map((w) => (
+                      <div key={w.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`create-assistant-${w.id}`}
+                          checked={(form.assistant_ids || []).includes(w.id)}
+                          onCheckedChange={() => setForm((prev) => ({
+                            ...prev,
+                            assistant_ids: (prev.assistant_ids || []).includes(w.id)
+                              ? (prev.assistant_ids || []).filter((id) => id !== w.id)
+                              : [...(prev.assistant_ids || []), w.id],
+                          }))}
+                        />
+                        <label htmlFor={`create-assistant-${w.id}`} className="text-sm cursor-pointer">{w.full_name}</label>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

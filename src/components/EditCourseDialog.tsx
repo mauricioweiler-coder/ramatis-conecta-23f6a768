@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Trash2 } from "lucide-react";
-import { useUpdateCourse, useDeleteCourse, useWorkers } from "@/hooks/useCourses";
+import { useUpdateCourse, useDeleteCourse, useWorkers, useProfessorWorkers } from "@/hooks/useCourses";
 import { toast } from "sonner";
 import type { Course } from "@/hooks/useCourses";
 
@@ -22,6 +23,7 @@ const COURSE_STATUSES = ["Planejado", "Inscrições Abertas", "Em Andamento", "C
 
 export function EditCourseDialog({ course, open, onOpenChange }: Props) {
   const { data: workers } = useWorkers();
+  const { data: professorWorkers } = useProfessorWorkers();
   const updateCourse = useUpdateCourse();
   const deleteCourse = useDeleteCourse();
 
@@ -30,6 +32,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
     description: course.description || "",
     coordinator_id: course.coordinator_id || "",
     main_teacher_id: course.main_teacher_id || "",
+    assistant_ids: course.assistant_ids || [] as string[],
     weekday: course.weekday || "",
     start_time: course.start_time || "",
     start_date: course.start_date || "",
@@ -46,6 +49,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
       description: course.description || "",
       coordinator_id: course.coordinator_id || "",
       main_teacher_id: course.main_teacher_id || "",
+      assistant_ids: course.assistant_ids || [],
       weekday: course.weekday || "",
       start_time: course.start_time || "",
       start_date: course.start_date || "",
@@ -56,6 +60,15 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
       status: course.status || "Planejado",
     });
   }, [course]);
+
+  const toggleAssistant = (workerId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      assistant_ids: prev.assistant_ids.includes(workerId)
+        ? prev.assistant_ids.filter((id) => id !== workerId)
+        : [...prev.assistant_ids, workerId],
+    }));
+  };
 
   const handleSave = async () => {
     if (!form.name) {
@@ -69,6 +82,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
         description: form.description || null,
         coordinator_id: form.coordinator_id || null,
         main_teacher_id: form.main_teacher_id || null,
+        assistant_ids: form.assistant_ids.length > 0 ? form.assistant_ids : null,
         weekday: form.weekday || null,
         start_time: form.start_time || null,
         start_date: form.start_date || null,
@@ -134,7 +148,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
               <Select value={form.coordinator_id} onValueChange={(v) => setForm({ ...form, coordinator_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {(workers || []).map((w) => (
+                  {(professorWorkers || []).map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -145,11 +159,29 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
               <Select value={form.main_teacher_id} onValueChange={(v) => setForm({ ...form, main_teacher_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {(workers || []).map((w) => (
+                  {(professorWorkers || []).map((w) => (
                     <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Auxiliares</Label>
+            <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
+              {(workers || []).length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum trabalhador disponível</p>
+              )}
+              {(workers || []).map((w) => (
+                <div key={w.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`assistant-${w.id}`}
+                    checked={form.assistant_ids.includes(w.id)}
+                    onCheckedChange={() => toggleAssistant(w.id)}
+                  />
+                  <label htmlFor={`assistant-${w.id}`} className="text-sm cursor-pointer">{w.full_name}</label>
+                </div>
+              ))}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
