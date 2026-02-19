@@ -150,9 +150,11 @@ export default function Presenca() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" disabled>
-            <ScanFace className="mr-2 h-4 w-4" />
-            Modo tablet — Disponível apenas no dispositivo dedicado
+          <Button variant="outline" asChild>
+            <a href="/registro-presenca" target="_blank" rel="noopener noreferrer">
+              <ScanFace className="mr-2 h-4 w-4" />
+              Modo tablet — Abrir tela de registro
+            </a>
           </Button>
         </CardContent>
       </Card>
