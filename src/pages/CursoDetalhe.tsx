@@ -33,7 +33,9 @@ export default function CursoDetalhe() {
   const course = courses?.find((c) => c.id === id);
 
   const isTeacherOrCoordinator = !!course && !!user && (
-    course.main_teacher_id === user.id || course.coordinator_id === user.id
+    course.main_teacher_id === user.id ||
+    course.coordinator_id === user.id ||
+    (course.assistant_ids || []).includes(user.id)
   );
   const canManage = isAdminOrDiretor || isTeacherOrCoordinator;
   const isAluno = role === "aluno";
