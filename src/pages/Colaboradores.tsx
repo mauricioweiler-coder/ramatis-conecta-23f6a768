@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Users, UserCheck, GraduationCap, Loader2, AlertTriangle } from "lucide-react";
+import { Search, Users, UserCheck, GraduationCap, Loader2, AlertTriangle, Printer } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const roleLabels: Record<string, string> = {
@@ -170,6 +170,90 @@ export default function Colaboradores() {
     );
   };
 
+  const handlePrintInactiveReport = useCallback(() => {
+    const inactive = enriched.filter((p) => p.isInactive90).sort((a, b) => {
+      const aDays = a.daysSinceAttendance ?? 9999;
+      const bDays = b.daysSinceAttendance ?? 9999;
+      return bDays - aDays;
+    });
+
+    const reportDate = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatório de Colaboradores Inativos</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #1a1a1a; font-size: 12px; }
+          .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #0284c7; padding-bottom: 16px; }
+          .header h1 { font-size: 18px; margin-bottom: 4px; color: #0284c7; }
+          .header p { font-size: 11px; color: #666; }
+          .summary { display: flex; gap: 24px; margin-bottom: 20px; }
+          .summary-item { font-size: 11px; color: #666; }
+          .summary-item strong { color: #1a1a1a; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f1f5f9; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 2px solid #cbd5e1; }
+          td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .danger { color: #dc2626; font-weight: 600; }
+          .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+          @media print { body { padding: 12px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Ramatis Conecta — Relatório de Colaboradores Inativos</h1>
+          <p>Gerado em ${reportDate} · Critério: sem presença há 90+ dias</p>
+        </div>
+        <div class="summary">
+          <div class="summary-item">Total de inativos: <strong>${inactive.length}</strong></div>
+          <div class="summary-item">Total de colaboradores: <strong>${colaboradores.length}</strong></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Celular</th>
+              <th>Papel</th>
+              <th>Última Presença</th>
+              <th>Dias Ausente</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${inactive.map((p, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${p.full_name || "—"}</td>
+                <td>${p.email || "—"}</td>
+                <td>${p.mobile_phone || "—"}</td>
+                <td>${roleLabels[p.role || ""] || p.role || "—"}</td>
+                <td class="danger">${p.lastDate ? format(new Date(p.lastDate), "dd/MM/yyyy", { locale: ptBR }) : "Nunca registrou"}</td>
+                <td class="danger">${p.daysSinceAttendance !== null ? p.daysSinceAttendance + " dias" : "—"}</td>
+                <td>${p.workerStatus || "—"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        <div class="footer">Ramatis Conecta · Associação Espírita · Documento gerado automaticamente</div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 300);
+    }
+  }, [enriched, colaboradores.length]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -185,6 +269,12 @@ export default function Colaboradores() {
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">Colaboradores</h1>
           <p className="text-muted-foreground">Membros registrados na casa</p>
         </div>
+        {inactiveCount > 0 && (
+          <Button variant="outline" onClick={handlePrintInactiveReport} className="gap-2">
+            <Printer className="h-4 w-4" />
+            Imprimir Inativos ({inactiveCount})
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
