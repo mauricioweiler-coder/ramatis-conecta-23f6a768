@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Calendar, Clock, Users, Trash2, Plus, Lock, Mic } from "lucide-react";
+import { Loader2, Calendar, Clock, Users, Trash2, Plus, Lock, Mic, HardHat } from "lucide-react";
 import type { SpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useUpdateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
@@ -126,10 +126,16 @@ export default function SpiritualSessionDetail({ session, open, onOpenChange }: 
                 {new Date(session.session_date + "T12:00:00").toLocaleDateString("pt-BR")}
                 {session.start_time && ` às ${session.start_time}`}
               </span>
-              <Badge variant="outline" className="gap-1">
-                <Users className="h-3 w-3" />
-                {totalPeople} pessoas
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <HardHat className="h-3 w-3" />
+                  {session.workers_present} trabalhador(es)
+                </Badge>
+                <Badge variant="outline" className="gap-1">
+                  <Users className="h-3 w-3" />
+                  {totalPeople} atendidos
+                </Badge>
+              </div>
             </div>
           </div>
 

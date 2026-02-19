@@ -19,6 +19,7 @@ export interface SpiritualSession {
   observations: string | null;
   created_at: string;
   session_services: SessionService[];
+  workers_present: number;
   // Joined worker data
   responsible_worker?: { id: string; full_name: string } | null;
   speaker_worker?: { id: string; full_name: string } | null;
@@ -33,12 +34,30 @@ export function useSpiritualSessions() {
         .select("*, session_services(*, service_types(id, name)), responsible_worker:workers!spiritual_sessions_responsible_id_fkey(id, full_name), speaker_worker:workers!spiritual_sessions_speaker_id_fkey(id, full_name)")
         .order("session_date", { ascending: false });
       if (error) throw error;
+
+      // Fetch attendance counts per session
+      const sessionIds = (data || []).map((s: any) => s.id);
+      let attendanceCounts: Record<string, number> = {};
+      if (sessionIds.length > 0) {
+        const { data: attendanceData } = await supabase
+          .from("attendance")
+          .select("spiritual_session_id")
+          .in("spiritual_session_id", sessionIds);
+        if (attendanceData) {
+          for (const a of attendanceData) {
+            const sid = (a as any).spiritual_session_id;
+            if (sid) attendanceCounts[sid] = (attendanceCounts[sid] || 0) + 1;
+          }
+        }
+      }
+
       return (data as any[]).map((s) => ({
         ...s,
         session_services: (s.session_services || []).map((ss: any) => ({
           ...ss,
           service_type: ss.service_types,
         })),
+        workers_present: attendanceCounts[s.id] || 0,
       })) as SpiritualSession[];
     },
   });

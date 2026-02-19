@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, Calendar, Users, Trash2, Search, ArrowUpDown, Mic } from "lucide-react";
+import { Plus, Loader2, Calendar, Users, Trash2, Search, ArrowUpDown, Mic, HardHat } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSpiritualSessions, useCreateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
@@ -21,7 +21,7 @@ interface ServiceEntry {
   people_count: number;
 }
 
-type SortField = "date" | "responsible" | "speaker" | "total";
+type SortField = "date" | "responsible" | "speaker" | "total" | "workers";
 type SortDir = "asc" | "desc";
 
 export default function SpiritualSessionsTab() {
@@ -133,6 +133,8 @@ export default function SpiritualSessionsTab() {
           return getSpeakerName(a).localeCompare(getSpeakerName(b)) * dir;
         case "total":
           return (totalPeople(a) - totalPeople(b)) * dir;
+        case "workers":
+          return (a.workers_present - b.workers_present) * dir;
         default:
           return 0;
       }
@@ -289,13 +291,14 @@ export default function SpiritualSessionsTab() {
                 <TableHead className="hidden md:table-cell"><SortHeader field="responsible">Dirigente</SortHeader></TableHead>
                 <TableHead className="hidden md:table-cell"><SortHeader field="speaker">Palestrante</SortHeader></TableHead>
                 <TableHead>Atendimentos</TableHead>
-                <TableHead className="text-right"><SortHeader field="total">Total</SortHeader></TableHead>
+                <TableHead><SortHeader field="workers">Trabalhadores</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="total">Total Atend.</SortHeader></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     Nenhuma sessão encontrada
                   </TableCell>
                 </TableRow>
@@ -326,6 +329,12 @@ export default function SpiritualSessionsTab() {
                             </Badge>
                           ))
                         )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <HardHat className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground">{s.workers_present}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
