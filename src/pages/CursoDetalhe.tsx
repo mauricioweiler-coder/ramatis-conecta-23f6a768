@@ -737,12 +737,18 @@ function StudentAttendanceSection({ courseId, lessonDate, myMemberId }: {
             </div>
           )}
 
-          {/* Allow justification only when absent and no justification yet */}
-          {!myRecord.present && !myRecord.justification && !showForm && (
-            <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
-              <MessageSquare className="mr-1 h-3 w-3" /> Enviar Justificativa
-            </Button>
-          )}
+          {/* Allow justification only when absent, no justification yet, and within 2 days */}
+          {!myRecord.present && !myRecord.justification && !showForm && (() => {
+            const lessonMs = new Date(lessonDate + "T23:59:59").getTime();
+            const withinDeadline = Date.now() <= lessonMs + 2 * 24 * 60 * 60 * 1000;
+            return withinDeadline ? (
+              <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
+                <MessageSquare className="mr-1 h-3 w-3" /> Enviar Justificativa
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Prazo para justificativa expirado (até 2 dias após a aula).</p>
+            );
+          })()}
 
           {showForm && (
             <div className="border-t pt-3 space-y-3">
