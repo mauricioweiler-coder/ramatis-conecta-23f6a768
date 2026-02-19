@@ -177,6 +177,8 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          justification: string | null
+          justification_status: string | null
           member_id: string
           notes: string | null
           present: boolean
@@ -186,6 +188,8 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          justification?: string | null
+          justification_status?: string | null
           member_id: string
           notes?: string | null
           present?: boolean
@@ -195,6 +199,8 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          justification?: string | null
+          justification_status?: string | null
           member_id?: string
           notes?: string | null
           present?: boolean

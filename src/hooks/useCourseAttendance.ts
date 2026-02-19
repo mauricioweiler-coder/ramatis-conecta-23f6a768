@@ -17,6 +17,23 @@ export function useCourseAttendance(courseId: string | null, date: string) {
   });
 }
 
+export function useCourseAttendanceByMember(courseId: string | null, memberId: string | null) {
+  return useQuery({
+    queryKey: ["course-attendance-member", courseId, memberId],
+    enabled: !!courseId && !!memberId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_attendance")
+        .select("*")
+        .eq("course_id", courseId!)
+        .eq("member_id", memberId!)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useSaveCourseAttendance() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -29,7 +46,6 @@ export function useSaveCourseAttendance() {
       date: string;
       records: { member_id: string; present: boolean; notes?: string }[];
     }) => {
-      // Delete existing records for this course/date, then insert new ones
       await supabase
         .from("course_attendance")
         .delete()
@@ -51,6 +67,41 @@ export function useSaveCourseAttendance() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["course-attendance", vars.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course-attendance-member", vars.courseId] });
+    },
+  });
+}
+
+export function useSubmitJustification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ attendanceId, justification }: { attendanceId: string; justification: string }) => {
+      const { error } = await supabase
+        .from("course_attendance")
+        .update({ justification, justification_status: "PENDENTE" })
+        .eq("id", attendanceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["course-attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["course-attendance-member"] });
+    },
+  });
+}
+
+export function useUpdateJustificationStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ attendanceId, status }: { attendanceId: string; status: "ACEITA" | "REJEITADA" }) => {
+      const { error } = await supabase
+        .from("course_attendance")
+        .update({ justification_status: status })
+        .eq("id", attendanceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["course-attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["course-attendance-member"] });
     },
   });
 }
