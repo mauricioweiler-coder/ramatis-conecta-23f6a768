@@ -18,6 +18,7 @@ interface Props {
 }
 
 const WEEKDAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+const COURSE_STATUSES = ["Planejado", "Inscrições Abertas", "Em Andamento", "Concluído"] as const;
 
 export function EditCourseDialog({ course, open, onOpenChange }: Props) {
   const { data: workers } = useWorkers();
@@ -36,6 +37,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
     room: course.room || "",
     graduation_role: course.graduation_role || "",
     level: course.level,
+    status: course.status || "Planejado",
   });
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
       room: course.room || "",
       graduation_role: course.graduation_role || "",
       level: course.level,
+      status: course.status || "Planejado",
     });
   }, [course]);
 
@@ -73,6 +76,7 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
         room: form.room || null,
         graduation_role: form.graduation_role || null,
         level: form.level,
+        status: form.status,
       });
       toast.success("Curso atualizado!");
       onOpenChange(false);
@@ -181,6 +185,17 @@ export function EditCourseDialog({ course, open, onOpenChange }: Props) {
                 <SelectItem value="professor">Professor</SelectItem>
                 <SelectItem value="estagiario">Estagiário</SelectItem>
                 <SelectItem value="trabalhador">Trabalhador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {COURSE_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
