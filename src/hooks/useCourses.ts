@@ -5,14 +5,18 @@ import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 export type Course = Tables<"courses">;
 export type CourseInsert = TablesInsert<"courses">;
 
-export function useCourses() {
+export function useCourses(level?: number) {
   return useQuery({
-    queryKey: ["courses"],
+    queryKey: ["courses", level],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("courses")
         .select("*")
         .order("created_at", { ascending: false });
+      if (level !== undefined) {
+        query = query.eq("level", level);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

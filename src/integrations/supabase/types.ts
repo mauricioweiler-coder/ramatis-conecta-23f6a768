@@ -309,6 +309,7 @@ export type Database = {
           end_date: string | null
           graduation_role: string | null
           id: string
+          level: number
           main_teacher_id: string | null
           name: string
           room: string | null
@@ -325,6 +326,7 @@ export type Database = {
           end_date?: string | null
           graduation_role?: string | null
           id?: string
+          level?: number
           main_teacher_id?: string | null
           name: string
           room?: string | null
@@ -341,6 +343,7 @@ export type Database = {
           end_date?: string | null
           graduation_role?: string | null
           id?: string
+          level?: number
           main_teacher_id?: string | null
           name?: string
           room?: string | null
