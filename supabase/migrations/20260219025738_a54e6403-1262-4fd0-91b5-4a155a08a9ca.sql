@@ -1,0 +1,1 @@
+UPDATE public.course_attendance SET justification = 'Estive com consulta médica agendada.', justification_status = 'PENDENTE' WHERE id = '55db431d-3bba-42e7-8f9b-a11fb75ccc59';
