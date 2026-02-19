@@ -360,14 +360,14 @@ export type Database = {
             foreignKeyName: "courses_coordinator_id_fkey"
             columns: ["coordinator_id"]
             isOneToOne: false
-            referencedRelation: "workers"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "courses_main_teacher_id_fkey"
             columns: ["main_teacher_id"]
             isOneToOne: false
-            referencedRelation: "workers"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
