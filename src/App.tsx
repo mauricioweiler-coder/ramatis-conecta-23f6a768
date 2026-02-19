@@ -20,6 +20,7 @@ import MeuPerfil from "./pages/MeuPerfil";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Matricula from "./pages/Matricula";
+import CursoDetalhe from "./pages/CursoDetalhe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/colaboradores" element={<Colaboradores />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/cursos" element={<Cursos />} />
+              <Route path="/cursos/:id" element={<CursoDetalhe />} />
               <Route path="/atendimento" element={<Atendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/atendimentos/dashboard" element={<DashboardAtendimentos />} />
