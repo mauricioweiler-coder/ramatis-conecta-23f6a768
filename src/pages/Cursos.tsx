@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2, UserPlus, Pencil, ClipboardList } from "lucide-react";
+import { Plus, GraduationCap, Users, Calendar, BookOpen, Loader2, UserPlus, Pencil, Eye } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCourses, useCourseStudentCounts, useWorkers, useProfessorWorkers, useCreateCourse } from "@/hooks/useCourses";
 import { toast } from "sonner";
 import type { CourseInsert, Course } from "@/hooks/useCourses";
 import { CourseStudentsDialog } from "@/components/CourseStudentsDialog";
 import { EditCourseDialog } from "@/components/EditCourseDialog";
-import { CourseAttendanceDialog } from "@/components/CourseAttendanceDialog";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEnrollStudent } from "@/hooks/useCourseStudents";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +48,7 @@ export default function Cursos() {
 
   const { data: courses, isLoading } = useCourses(isAluno ? 1 : undefined);
   const { data: studentCounts } = useCourseStudentCounts();
+  const navigate = useNavigate();
   const { data: workers } = useWorkers();
   const { data: professorWorkers } = useProfessorWorkers();
   const createCourse = useCreateCourse();
@@ -56,7 +57,7 @@ export default function Cursos() {
   const [open, setOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [editCourse, setEditCourse] = useState<Course | null>(null);
-  const [attendanceCourse, setAttendanceCourse] = useState<Course | null>(null);
+  
   const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [form, setForm] = useState<Partial<CourseInsert> & { assistant_ids?: string[] }>({ level: 1, assistant_ids: [] });
@@ -400,27 +401,31 @@ export default function Cursos() {
                     </div>
                   )}
 
-                  {/* Aluno: enroll button */}
-                  {isAluno && curso.displayStatus === "Inscrições Abertas" && (
+                  {/* Aluno: enroll or access button */}
+                  {isAluno && !isEnrolled && curso.displayStatus === "Inscrições Abertas" && (
                     <Button
                       className="w-full"
-                      variant={isEnrolled ? "outline" : "default"}
-                      disabled={isEnrolled || isEnrolling}
+                      disabled={isEnrolling}
                       onClick={() => handleEnroll(curso.id)}
                     >
                       {isEnrolling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                      {isEnrolled ? "Já matriculado" : "Matricular-se"}
+                      Matricular-se
+                    </Button>
+                  )}
+                  {isAluno && isEnrolled && (
+                    <Button className="w-full" variant="outline" onClick={() => navigate(`/cursos/${curso.id}`)}>
+                      <Eye className="mr-2 h-4 w-4" /> Acessar Curso
                     </Button>
                   )}
 
                   {/* Admin: action buttons */}
                   {!isAluno && (
                     <div className="flex gap-2 pt-2">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/cursos/${curso.id}`)}>
+                        <Eye className="mr-1 h-3 w-3" />Acessar
+                      </Button>
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelectedCourse(curso)}>
                         <Users className="mr-1 h-3 w-3" />Alunos
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setAttendanceCourse(curso)}>
-                        <ClipboardList className="mr-1 h-3 w-3" />Presença
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditCourse(curso)}>
                         <Pencil className="h-3 w-3" />
@@ -447,13 +452,6 @@ export default function Cursos() {
           course={editCourse}
           open={!!editCourse}
           onOpenChange={(o) => !o && setEditCourse(null)}
-        />
-      )}
-      {attendanceCourse && !isAluno && (
-        <CourseAttendanceDialog
-          course={attendanceCourse}
-          open={!!attendanceCourse}
-          onOpenChange={(o) => !o && setAttendanceCourse(null)}
         />
       )}
     </div>

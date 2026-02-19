@@ -216,6 +216,88 @@ export type Database = {
           },
         ]
       }
+      course_lesson_materials: {
+        Row: {
+          content: string | null
+          created_at: string
+          file_name: string | null
+          file_size: number | null
+          id: string
+          lesson_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          lesson_id: string
+          title: string
+          type?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          lesson_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lesson_materials_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_lessons: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          lesson_date: string | null
+          lesson_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_date?: string | null
+          lesson_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_date?: string | null
+          lesson_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_student_notes: {
         Row: {
           author_id: string
