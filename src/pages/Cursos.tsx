@@ -21,18 +21,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
+const COURSE_STATUSES = ["Planejado", "Inscrições Abertas", "Em Andamento", "Concluído"] as const;
+
 const statusVariant: Record<string, string> = {
-  Ativo: "bg-primary/10 text-primary border-primary/20",
-  Encerrado: "bg-muted text-muted-foreground border-border",
-  Planejado: "bg-secondary/10 text-secondary border-secondary/20",
+  "Planejado": "bg-secondary/10 text-secondary border-secondary/20",
+  "Inscrições Abertas": "bg-primary/10 text-primary border-primary/20",
+  "Em Andamento": "bg-primary/10 text-primary border-primary/20",
+  "Concluído": "bg-muted text-muted-foreground border-border",
 };
 
-function getCourseStatus(course: { start_date: string | null; end_date: string | null }): string {
-  const today = new Date().toISOString().slice(0, 10);
-  if (!course.start_date || course.start_date > today) return "Planejado";
-  if (course.end_date && course.end_date < today) return "Encerrado";
-  return "Ativo";
-}
 
 const graduationLabels: Record<string, string> = {
   professor: "Professor",
@@ -119,6 +116,7 @@ export default function Cursos() {
         start_time: form.start_time,
         room: form.room,
         graduation_role: form.graduation_role,
+        status: form.status || "Planejado",
         level: form.level || 1,
       });
       toast.success("Curso criado com sucesso!");
@@ -131,7 +129,7 @@ export default function Cursos() {
 
   const coursesWithStatus = (courses || []).map((c) => ({
     ...c,
-    status: getCourseStatus(c),
+    displayStatus: c.status || "Planejado",
     alunos: studentCounts?.[c.id] || 0,
   }));
 
@@ -141,7 +139,7 @@ export default function Cursos() {
     : coursesWithStatus.filter((c) => c.level === Number(levelFilter));
 
   const totalAlunos = studentCounts ? Object.values(studentCounts).reduce((s, c) => s + c, 0) : 0;
-  const totalAtivos = coursesWithStatus.filter((c) => c.status === "Ativo").length;
+  const totalAtivos = coursesWithStatus.filter((c) => c.displayStatus === "Em Andamento" || c.displayStatus === "Inscrições Abertas").length;
 
   // Available levels from data
   const availableLevels = [...new Set(coursesWithStatus.map((c) => c.level))].sort();
@@ -256,6 +254,17 @@ export default function Cursos() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select value={form.status || "Planejado"} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {COURSE_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={handleCreate} disabled={createCourse.isPending}>
@@ -341,7 +350,7 @@ export default function Cursos() {
                         <Badge variant="secondary" className="text-xs">N{curso.level}</Badge>
                       )}
                     </div>
-                    <Badge variant="outline" className={statusVariant[curso.status] || ""}>{curso.status}</Badge>
+                    <Badge variant="outline" className={statusVariant[curso.displayStatus] || ""}>{curso.displayStatus}</Badge>
                   </div>
                   <CardDescription className="line-clamp-2">{curso.description || "Sem descrição"}</CardDescription>
                 </CardHeader>
@@ -364,7 +373,7 @@ export default function Cursos() {
                   )}
 
                   {/* Aluno: enroll button */}
-                  {isAluno && (curso.status === "Ativo" || curso.status === "Planejado") && (
+                  {isAluno && curso.displayStatus === "Inscrições Abertas" && (
                     <Button
                       className="w-full"
                       variant={isEnrolled ? "outline" : "default"}

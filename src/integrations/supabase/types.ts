@@ -316,6 +316,7 @@ export type Database = {
           schedule_dates: string[] | null
           start_date: string | null
           start_time: string | null
+          status: string
           weekday: string | null
         }
         Insert: {
@@ -333,6 +334,7 @@ export type Database = {
           schedule_dates?: string[] | null
           start_date?: string | null
           start_time?: string | null
+          status?: string
           weekday?: string | null
         }
         Update: {
@@ -350,6 +352,7 @@ export type Database = {
           schedule_dates?: string[] | null
           start_date?: string | null
           start_time?: string | null
+          status?: string
           weekday?: string | null
         }
         Relationships: [
