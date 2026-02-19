@@ -10,10 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft, Plus, BookOpen, Users, Loader2, Save, Trash2, FileText,
   Link as LinkIcon, Type, Upload, Download, ExternalLink, CalendarDays, GripVertical,
-  Check, X, MessageSquare,
+  Check, X, MessageSquare, BarChart3,
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useCourseStudents } from "@/hooks/useCourseStudents";
@@ -129,6 +130,9 @@ export default function CursoDetalhe() {
           <TabsTrigger value="alunos">
             <Users className="mr-2 h-4 w-4" /> Alunos ({activeStudents.length})
           </TabsTrigger>
+          <TabsTrigger value="frequencia">
+            <BarChart3 className="mr-2 h-4 w-4" /> Frequência
+          </TabsTrigger>
         </TabsList>
 
         {/* AULAS TAB */}
@@ -221,6 +225,11 @@ export default function CursoDetalhe() {
               </Table>
             </Card>
           )}
+        </TabsContent>
+
+        {/* FREQUÊNCIA TAB */}
+        <TabsContent value="frequencia">
+          <AttendanceReportSection courseId={course.id} activeStudents={activeStudents} lessons={lessons} />
         </TabsContent>
       </Tabs>
 
@@ -835,5 +844,138 @@ function DeleteLessonButton({ lessonId, courseId, onDeleted }: { lessonId: strin
     <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
       <Trash2 className="mr-1 h-3 w-3 text-destructive" /> Excluir Aula
     </Button>
+  );
+}
+
+// --- Attendance Report Section ---
+function AttendanceReportSection({ courseId, activeStudents, lessons }: {
+  courseId: string; activeStudents: any[]; lessons: CourseLesson[];
+}) {
+  const { data: allAttendance, isLoading } = useQuery({
+    queryKey: ["course-attendance-all", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_attendance")
+        .select("member_id, present, date, justification_status")
+        .eq("course_id", courseId);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  // Count unique dates with attendance recorded
+  const attendanceDates = [...new Set((allAttendance || []).map((a) => a.date))];
+  const totalDates = attendanceDates.length;
+
+  if (totalDates === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-lg font-medium text-foreground">Nenhuma presença registrada</p>
+          <p className="text-sm text-muted-foreground">O relatório será gerado após o registro de presença nas aulas.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Build per-student stats
+  const studentStats = activeStudents.map((s: any) => {
+    const records = (allAttendance || []).filter((a) => a.member_id === s.member_id);
+    const presentCount = records.filter((a) => a.present).length;
+    const absentCount = records.filter((a) => !a.present).length;
+    const justifiedCount = records.filter((a) => !a.present && a.justification_status === "ACEITA").length;
+    const percentage = totalDates > 0 ? Math.round((presentCount / totalDates) * 100) : 0;
+    return {
+      memberId: s.member_id,
+      name: s.members?.name || "—",
+      presentCount,
+      absentCount,
+      justifiedCount,
+      percentage,
+    };
+  }).sort((a, b) => b.percentage - a.percentage);
+
+  const avgPercentage = studentStats.length > 0
+    ? Math.round(studentStats.reduce((sum, s) => sum + s.percentage, 0) / studentStats.length)
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{totalDates}</p>
+            <p className="text-xs text-muted-foreground">Aulas registradas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{activeStudents.length}</p>
+            <p className="text-xs text-muted-foreground">Alunos ativos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{avgPercentage}%</p>
+            <p className="text-xs text-muted-foreground">Frequência média</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">
+              {studentStats.filter((s) => s.percentage >= 75).length}
+            </p>
+            <p className="text-xs text-muted-foreground">Alunos ≥ 75%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Per-student table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Frequência por Aluno</CardTitle>
+          <CardDescription>Baseado em {totalDates} aula{totalDates > 1 ? "s" : ""} com presença registrada</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Aluno</TableHead>
+                <TableHead className="w-[180px]">Frequência</TableHead>
+                <TableHead className="text-center w-20">Presenças</TableHead>
+                <TableHead className="text-center w-20">Faltas</TableHead>
+                <TableHead className="text-center w-24">Justificadas</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {studentStats.map((s) => (
+                <TableRow key={s.memberId}>
+                  <TableCell className="font-medium text-foreground">{s.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Progress value={s.percentage} className="h-2 flex-1" />
+                      <span className={`text-sm font-medium min-w-[3ch] text-right ${
+                        s.percentage >= 75 ? "text-primary" : s.percentage >= 50 ? "text-yellow-600" : "text-destructive"
+                      }`}>
+                        {s.percentage}%
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center text-foreground">{s.presentCount}</TableCell>
+                  <TableCell className="text-center text-foreground">{s.absentCount}</TableCell>
+                  <TableCell className="text-center text-foreground">{s.justifiedCount}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
