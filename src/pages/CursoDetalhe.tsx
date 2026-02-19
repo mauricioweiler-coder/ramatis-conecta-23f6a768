@@ -62,6 +62,23 @@ export default function CursoDetalhe() {
     },
   });
 
+  // Fetch pending justifications count per date for this course
+  const { data: pendingByDate = {} } = useQuery({
+    queryKey: ["pending-justifications", id],
+    enabled: canManage && !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_attendance")
+        .select("date")
+        .eq("course_id", id!)
+        .eq("justification_status", "PENDENTE");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      data.forEach((r) => { counts[r.date] = (counts[r.date] || 0) + 1; });
+      return counts;
+    },
+  });
+
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
   const [newLessonOpen, setNewLessonOpen] = useState(false);
 
@@ -140,31 +157,42 @@ export default function CursoDetalhe() {
             </Card>
           ) : (
             <div className="grid gap-3">
-              {lessons.map((lesson, idx) => (
-                <Card
-                  key={lesson.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedLesson(lesson)}
-                >
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10 text-primary font-bold text-sm shrink-0">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{lesson.title}</p>
-                      {lesson.description && (
-                        <p className="text-sm text-muted-foreground truncate">{lesson.description}</p>
-                      )}
-                    </div>
-                    {lesson.lesson_date && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
-                        <CalendarDays className="h-4 w-4" />
-                        {new Date(lesson.lesson_date + "T12:00:00").toLocaleDateString("pt-BR")}
+              {lessons.map((lesson, idx) => {
+                const pendingCount = lesson.lesson_date ? (pendingByDate[lesson.lesson_date] || 0) : 0;
+                return (
+                  <Card
+                    key={lesson.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedLesson(lesson)}
+                  >
+                    <CardContent className="flex items-center gap-4 p-4">
+                      <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10 text-primary font-bold text-sm shrink-0">
+                        {idx + 1}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate">{lesson.title}</p>
+                          {canManage && pendingCount > 0 && (
+                            <Badge variant="destructive" className="text-xs shrink-0">
+                              <MessageSquare className="mr-1 h-3 w-3" />
+                              {pendingCount} pendente{pendingCount > 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                        </div>
+                        {lesson.description && (
+                          <p className="text-sm text-muted-foreground truncate">{lesson.description}</p>
+                        )}
+                      </div>
+                      {lesson.lesson_date && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
+                          <CalendarDays className="h-4 w-4" />
+                          {new Date(lesson.lesson_date + "T12:00:00").toLocaleDateString("pt-BR")}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
