@@ -364,7 +364,7 @@ export default function Cursos() {
                   )}
 
                   {/* Aluno: enroll button */}
-                  {isAluno && curso.status === "Ativo" && (
+                  {isAluno && (curso.status === "Ativo" || curso.status === "Planejado") && (
                     <Button
                       className="w-full"
                       variant={isEnrolled ? "outline" : "default"}
