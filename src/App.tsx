@@ -12,6 +12,7 @@ import Financeiro from "./pages/Financeiro";
 import Cursos from "./pages/Cursos";
 import Atendimento from "./pages/Atendimento";
 import Atendimentos from "./pages/Atendimentos";
+import DashboardAtendimentos from "./pages/DashboardAtendimentos";
 import RealizarAtendimento from "./pages/RealizarAtendimento";
 import Presenca from "./pages/Presenca";
 import GestaoRoles from "./pages/GestaoRoles";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/cursos" element={<Cursos />} />
               <Route path="/atendimento" element={<Atendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
+              <Route path="/atendimentos/dashboard" element={<DashboardAtendimentos />} />
               <Route path="/atendimentos/:id" element={<RealizarAtendimento />} />
               <Route path="/presenca" element={<Presenca />} />
               <Route path="/gestao-roles" element={<GestaoRoles />} />
