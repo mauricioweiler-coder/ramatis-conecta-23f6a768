@@ -178,6 +178,7 @@ export type Database = {
           date: string
           id: string
           justification: string | null
+          justification_review_notes: string | null
           justification_status: string | null
           member_id: string
           notes: string | null
@@ -189,6 +190,7 @@ export type Database = {
           date?: string
           id?: string
           justification?: string | null
+          justification_review_notes?: string | null
           justification_status?: string | null
           member_id: string
           notes?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           date?: string
           id?: string
           justification?: string | null
+          justification_review_notes?: string | null
           justification_status?: string | null
           member_id?: string
           notes?: string | null

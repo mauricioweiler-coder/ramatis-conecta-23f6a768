@@ -93,10 +93,10 @@ export function useSubmitJustification() {
 export function useUpdateJustificationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ attendanceId, status }: { attendanceId: string; status: "ACEITA" | "REJEITADA" }) => {
+    mutationFn: async ({ attendanceId, status, reviewNotes }: { attendanceId: string; status: "ACEITA" | "REJEITADA"; reviewNotes?: string }) => {
       const { error } = await supabase
         .from("course_attendance")
-        .update({ justification_status: status })
+        .update({ justification_status: status, justification_review_notes: reviewNotes || null })
         .eq("id", attendanceId);
       if (error) throw error;
     },
