@@ -36,6 +36,7 @@ const graduationLabels: Record<string, string> = {
   professor: "Professor",
   estagiario: "Estagiário",
   trabalhador: "Trabalhador",
+  aluno: "Estudante",
 };
 
 const WEEKDAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -277,6 +278,7 @@ export default function Cursos() {
                       <SelectItem value="professor">Professor</SelectItem>
                       <SelectItem value="estagiario">Estagiário</SelectItem>
                       <SelectItem value="trabalhador">Trabalhador</SelectItem>
+                      <SelectItem value="aluno">Estudante</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
