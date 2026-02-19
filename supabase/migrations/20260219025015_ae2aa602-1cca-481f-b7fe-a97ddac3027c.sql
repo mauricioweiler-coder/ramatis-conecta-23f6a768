@@ -1,0 +1,1 @@
+ALTER TABLE public.course_attendance ADD COLUMN justification_review_notes text;

@@ -592,6 +592,8 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
 
   const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>({});
   const [initialized, setInitialized] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; action: "ACEITA" | "REJEITADA" } | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
 
   if (!initialized && !isLoading) {
     const map: Record<string, boolean> = {};
@@ -617,10 +619,17 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
     }
   };
 
-  const handleJustification = async (attendanceId: string, status: "ACEITA" | "REJEITADA") => {
+  const handleConfirmReview = async () => {
+    if (!reviewTarget) return;
     try {
-      await updateJustStatus.mutateAsync({ attendanceId, status });
-      toast.success(status === "ACEITA" ? "Justificativa aceita!" : "Justificativa rejeitada.");
+      await updateJustStatus.mutateAsync({
+        attendanceId: reviewTarget.id,
+        status: reviewTarget.action,
+        reviewNotes: reviewNotes.trim() || undefined,
+      });
+      toast.success(reviewTarget.action === "ACEITA" ? "Justificativa aceita!" : "Justificativa rejeitada.");
+      setReviewTarget(null);
+      setReviewNotes("");
     } catch (e: any) {
       toast.error(e.message || "Erro");
     }
@@ -671,17 +680,22 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
                       <p className="text-xs text-muted-foreground line-clamp-2">{record.justification}</p>
                       {record.justification_status === "PENDENTE" ? (
                         <div className="flex gap-1">
-                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleJustification(record.id, "ACEITA")}>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => { setReviewTarget({ id: record.id, action: "ACEITA" }); setReviewNotes(""); }}>
                             <Check className="mr-1 h-3 w-3" /> Aceitar
                           </Button>
-                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => handleJustification(record.id, "REJEITADA")}>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => { setReviewTarget({ id: record.id, action: "REJEITADA" }); setReviewNotes(""); }}>
                             <X className="mr-1 h-3 w-3" /> Rejeitar
                           </Button>
                         </div>
                       ) : (
-                        <Badge variant={record.justification_status === "ACEITA" ? "default" : "destructive"} className="text-xs">
-                          {record.justification_status === "ACEITA" ? "Aceita" : "Rejeitada"}
-                        </Badge>
+                        <div className="space-y-1">
+                          <Badge variant={record.justification_status === "ACEITA" ? "default" : "destructive"} className="text-xs">
+                            {record.justification_status === "ACEITA" ? "Aceita" : "Rejeitada"}
+                          </Badge>
+                          {record.justification_review_notes && (
+                            <p className="text-xs text-muted-foreground italic">"{record.justification_review_notes}"</p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ) : (
@@ -693,6 +707,44 @@ function AttendanceSection({ courseId, lessonDate, activeStudents }: {
           })}
         </TableBody>
       </Table>
+
+      {/* Review justification dialog */}
+      {reviewTarget && (
+        <Dialog open={!!reviewTarget} onOpenChange={(o) => { if (!o) { setReviewTarget(null); setReviewNotes(""); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {reviewTarget.action === "ACEITA" ? "Aceitar" : "Rejeitar"} Justificativa
+              </DialogTitle>
+              <DialogDescription>
+                Adicione uma observação (opcional) antes de confirmar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-2">
+              <Label>Observação do professor</Label>
+              <Textarea
+                placeholder="Ex: Documentação apresentada, justificativa válida..."
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setReviewTarget(null); setReviewNotes(""); }}>
+                Cancelar
+              </Button>
+              <Button
+                variant={reviewTarget.action === "ACEITA" ? "default" : "destructive"}
+                onClick={handleConfirmReview}
+                disabled={updateJustStatus.isPending}
+              >
+                {updateJustStatus.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                {reviewTarget.action === "ACEITA" ? "Aceitar" : "Rejeitar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -770,6 +822,11 @@ function StudentAttendanceSection({ courseId, lessonDate, myMemberId }: {
                   {myRecord.justification_status === "ACEITA" ? "Aceita" :
                    myRecord.justification_status === "REJEITADA" ? "Rejeitada" : "Pendente"}
                 </Badge>
+              )}
+              {myRecord.justification_review_notes && (
+                <p className="text-xs text-muted-foreground italic mt-1">
+                  Observação do professor: "{myRecord.justification_review_notes}"
+                </p>
               )}
             </div>
           )}
