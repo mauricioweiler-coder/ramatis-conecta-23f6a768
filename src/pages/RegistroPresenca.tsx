@@ -124,35 +124,20 @@ export default function RegistroPresenca() {
     if (!descriptorsReady) return;
 
     const startCamera = async () => {
-      // Try multiple constraints in order of preference
-      const constraintOptions = [
-        { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } },
-        { video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } } },
-        { video: { width: { ideal: 640 }, height: { ideal: 480 } } },
-        { video: true },
-      ];
-
-      let stream: MediaStream | null = null;
-
-      for (const constraints of constraintOptions) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-          break;
-        } catch (err) {
-          console.warn("Camera attempt failed with constraints:", constraints, err);
-        }
-      }
-
-      if (stream) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // Ensure video plays (needed on some mobile browsers)
-          videoRef.current.play().catch(() => {});
-        }
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        }, 100);
         setState("ready");
-      } else {
-        console.error("All camera attempts failed");
+      } catch {
+        console.error("Camera access failed");
         setState("error");
         setStatusMsg("Não foi possível acessar a câmera. Verifique as permissões do navegador.");
       }
