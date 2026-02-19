@@ -9,16 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, Wallet, Search, Loader2 } from "lucide-react";
 import { useTransactions, useCreateTransaction } from "@/hooks/useTransactions";
+import { useWorkers } from "@/hooks/useCourses";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Financeiro() {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ description: "", type: "", amount: "", category: "", responsible_name: "" });
+  const [form, setForm] = useState({ description: "", type: "", amount: "", category: "", responsible_id: "" });
 
   const { data: transactions = [], isLoading } = useTransactions();
   const createTransaction = useCreateTransaction();
+  const { data: workers = [] } = useWorkers();
   const { toast } = useToast();
 
   const totalEntradas = transactions.filter((t) => t.type === "entrada").reduce((s, t) => s + Number(t.amount), 0);
@@ -42,12 +44,12 @@ export default function Financeiro() {
         type: form.type,
         amount: parseFloat(form.amount),
         category: form.category,
-        responsible_name: form.responsible_name || null,
+        responsible_id: form.responsible_id || null,
       },
       {
         onSuccess: () => {
           toast({ title: "Movimentação registrada!" });
-          setForm({ description: "", type: "", amount: "", category: "", responsible_name: "" });
+          setForm({ description: "", type: "", amount: "", category: "", responsible_id: "" });
           setDialogOpen(false);
         },
         onError: () => toast({ title: "Erro ao registrar", variant: "destructive" }),
@@ -117,7 +119,14 @@ export default function Financeiro() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Responsável</Label>
-                  <Input placeholder="Nome do responsável" value={form.responsible_name} onChange={(e) => setForm({ ...form, responsible_name: e.target.value })} />
+                  <Select value={form.responsible_id} onValueChange={(v) => setForm({ ...form, responsible_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o responsável" /></SelectTrigger>
+                    <SelectContent>
+                      {workers.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -204,7 +213,7 @@ export default function Financeiro() {
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{t.category}</Badge>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">{t.responsible_name || "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-muted-foreground">{t.responsible_worker?.full_name || t.responsible_name || "—"}</TableCell>
                     <TableCell className={`text-right font-semibold ${t.type === "entrada" ? "text-primary" : "text-destructive"}`}>
                       {t.type === "entrada" ? "+" : "-"} R$ {Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </TableCell>

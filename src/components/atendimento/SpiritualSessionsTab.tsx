@@ -12,6 +12,7 @@ import { Plus, Loader2, Calendar, Users, Trash2, Search, ArrowUpDown, Mic } from
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSpiritualSessions, useCreateSpiritualSession } from "@/hooks/useSpiritualSessions";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
+import { useWorkers } from "@/hooks/useCourses";
 import { useToast } from "@/hooks/use-toast";
 import SpiritualSessionDetail from "./SpiritualSessionDetail";
 
@@ -27,8 +28,8 @@ export default function SpiritualSessionsTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sessionDate, setSessionDate] = useState("");
   const [startTime, setStartTime] = useState("19:00");
-  const [responsible, setResponsible] = useState("");
-  const [speaker, setSpeaker] = useState("");
+  const [responsibleId, setResponsibleId] = useState("");
+  const [speakerId, setSpeakerId] = useState("");
   const [observations, setObservations] = useState("");
   const [services, setServices] = useState<ServiceEntry[]>([]);
   const [selectedSession, setSelectedSession] = useState<SpiritualSession | null>(null);
@@ -39,6 +40,7 @@ export default function SpiritualSessionsTab() {
 
   const { data: sessions = [], isLoading } = useSpiritualSessions();
   const { data: serviceTypes = [] } = useServiceTypes(true, undefined, 1);
+  const { data: workers = [] } = useWorkers();
   const create = useCreateSpiritualSession();
   const { toast } = useToast();
 
@@ -59,8 +61,8 @@ export default function SpiritualSessionsTab() {
   const resetForm = () => {
     setSessionDate("");
     setStartTime("19:00");
-    setResponsible("");
-    setSpeaker("");
+    setResponsibleId("");
+    setSpeakerId("");
     setObservations("");
     setServices([]);
   };
@@ -75,8 +77,8 @@ export default function SpiritualSessionsTab() {
       {
         session_date: sessionDate,
         start_time: startTime || undefined,
-        responsible_name: responsible || undefined,
-        speaker_name: speaker || undefined,
+        responsible_id: responsibleId || undefined,
+        speaker_id: speakerId || undefined,
         observations: observations || undefined,
         services: validServices,
       },
@@ -94,6 +96,11 @@ export default function SpiritualSessionsTab() {
   const totalPeople = (session: SpiritualSession) =>
     session.session_services.reduce((sum, s) => sum + s.people_count, 0);
 
+  const getResponsibleName = (s: SpiritualSession) =>
+    s.responsible_worker?.full_name || s.responsible_name || "";
+  const getSpeakerName = (s: SpiritualSession) =>
+    s.speaker_worker?.full_name || s.speaker_name || "";
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -109,8 +116,8 @@ export default function SpiritualSessionsTab() {
       if (!q) return true;
       return (
         s.session_date.includes(q) ||
-        (s.responsible_name || "").toLowerCase().includes(q) ||
-        (s.speaker_name || "").toLowerCase().includes(q) ||
+        getResponsibleName(s).toLowerCase().includes(q) ||
+        getSpeakerName(s).toLowerCase().includes(q) ||
         s.session_services.some((ss) => (ss.service_type?.name || "").toLowerCase().includes(q))
       );
     });
@@ -121,9 +128,9 @@ export default function SpiritualSessionsTab() {
         case "date":
           return (a.session_date > b.session_date ? 1 : -1) * dir;
         case "responsible":
-          return ((a.responsible_name || "").localeCompare(b.responsible_name || "")) * dir;
+          return getResponsibleName(a).localeCompare(getResponsibleName(b)) * dir;
         case "speaker":
-          return ((a.speaker_name || "").localeCompare(b.speaker_name || "")) * dir;
+          return getSpeakerName(a).localeCompare(getSpeakerName(b)) * dir;
         case "total":
           return (totalPeople(a) - totalPeople(b)) * dir;
         default:
@@ -180,14 +187,28 @@ export default function SpiritualSessionsTab() {
               </div>
               <div className="grid gap-2">
                 <Label>Dirigente / Responsável</Label>
-                <Input placeholder="Nome do responsável" value={responsible} onChange={(e) => setResponsible(e.target.value)} />
+                <Select value={responsibleId} onValueChange={setResponsibleId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o responsável" /></SelectTrigger>
+                  <SelectContent>
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1">
                   <Mic className="h-3.5 w-3.5" />
                   Palestrante
                 </Label>
-                <Input placeholder="Nome do palestrante" value={speaker} onChange={(e) => setSpeaker(e.target.value)} />
+                <Select value={speakerId} onValueChange={setSpeakerId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o palestrante" /></SelectTrigger>
+                  <SelectContent>
+                    {workers.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>{w.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-3">
@@ -288,10 +309,10 @@ export default function SpiritualSessionsTab() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{s.start_time || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{s.responsible_name || "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{getResponsibleName(s) || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {s.speaker_name ? (
-                        <span className="flex items-center gap-1"><Mic className="h-3.5 w-3.5" />{s.speaker_name}</span>
+                      {getSpeakerName(s) ? (
+                        <span className="flex items-center gap-1"><Mic className="h-3.5 w-3.5" />{getSpeakerName(s)}</span>
                       ) : "—"}
                     </TableCell>
                     <TableCell>
