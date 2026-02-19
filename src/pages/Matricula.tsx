@@ -118,11 +118,6 @@ export default function Matricula() {
                   Cadastrar
                 </Button>
               </form>
-              <div className="mt-4 text-center text-sm">
-                <a href="/auth" className="text-primary hover:underline">
-                  Já tem conta? Faça login
-                </a>
-              </div>
             </>
           )}
         </CardContent>
