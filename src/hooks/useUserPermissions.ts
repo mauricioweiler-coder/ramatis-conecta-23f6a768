@@ -33,7 +33,13 @@ const ROUTE_MODULE_MAP: Record<string, ModuleName> = {
 };
 
 export function routeToModule(route: string): ModuleName | null {
-  return ROUTE_MODULE_MAP[route] || null;
+  // Exact match first
+  if (ROUTE_MODULE_MAP[route]) return ROUTE_MODULE_MAP[route];
+  // Check if route starts with any mapped prefix (e.g. /cursos/123 → cursos)
+  for (const [path, mod] of Object.entries(ROUTE_MODULE_MAP)) {
+    if (route.startsWith(path + "/")) return mod;
+  }
+  return null;
 }
 
 /** Get current user's own permissions */
